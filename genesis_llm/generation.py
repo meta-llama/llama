@@ -42,18 +42,20 @@ class Genesis:
             next_token = sample_top_p(probs, top_p)
             next_token = next_token.reshape(-1)
             # only replace token if prompt has already been generated
-            next_token = torch.where(input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token)
+            next_token = torch.where(
+                input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
+            )
             tokens[:, cur_pos] = next_token
             prev_pos = cur_pos
-        
+
         decoded = []
         for i, t in enumerate(tokens.tolist()):
             # cut to max gen len
             n_tok_prompt = len(prompt_tokens[i])
-            t = t[n_tok_prompt:n_tok_prompt+max_gen_len]
+            t = t[n_tok_prompt : n_tok_prompt + max_gen_len]
             # cut to eos tok if any
             try:
-                t = t[:t.index(self.tokenizer.eos_id)]
+                t = t[: t.index(self.tokenizer.eos_id)]
             except ValueError:
                 pass
             decoded.append(self.tokenizer.decode(t))

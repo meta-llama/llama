@@ -22,15 +22,19 @@ def main(ckpt_dir: str, tokenizer_path: str):
     torch.manual_seed(1)
     is_main = int(local_rank) == 0
     start_time = time.time()
-    ckpt_path = sorted(Path(ckpt_dir).glob("*.pth"))[local_rank]
-    print(f"Rank {local_rank} loading {ckpt_path}")
+    checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+    assert (
+        world_size == checkpoints
+    ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {world_size}"
+    ckpt_path = checkpoints[local_rank]
+    if is_main:
+        print("Loading")
     checkpoint = torch.load(ckpt_path, map_location="cpu")
-    with open(Path(ckpt_dir) / 'params.json', 'r') as f:
+    with open(Path(ckpt_dir) / "params.json", "r") as f:
         params = json.loads(f.read())["model"]  # TODO: clean
+    params = {x: y for x, y in params.items() if x in ModelArgs.fields()}
 
-    params = {x: y for x,y in params.items() if x in ModelArgs.fields()}
-
-    model_args: ModelArgs = ModelArgs(max_seq_len = 1024, max_batch_size=32, **params)
+    model_args: ModelArgs = ModelArgs(max_seq_len=1024, max_batch_size=32, **params)
     tokenizer = Tokenizer(model_path=tokenizer_path)
     model_args.vocab_size = tokenizer.n_words
     torch.set_default_tensor_type(torch.cuda.HalfTensor)
@@ -42,15 +46,9 @@ def main(ckpt_dir: str, tokenizer_path: str):
     if is_main:
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
-    prompts = [
-        "Today I wrote a ",
-        "Making an apple pie is easy, "
-    ]
+    prompts = ["Today I wrote a ", "Making an apple pie is easy, "]
 
-    results = generator.generate(
-        prompts,
-        max_gen_len=256
-    )
+    results = generator.generate(prompts, max_gen_len=256)
     if is_main:
         for prompt, result in zip(prompts, results):
             print(prompt + result)

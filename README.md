@@ -1,16 +1,25 @@
-TODO: 
-- make sure people have cuda pytorch ?
-- actual readme
+# TODO:
 - fix params
 - copyright headers
 - LICENSE
+- script to download checkpoints / tokenizer
 
+# Genesis language models
+
+This repository is intended as a minimal example to load [Genesis](http://link_to_the_paper) models and run inference.
+
+### Setup
+In a conda env with pytorch / cuda available, run
 ```
 pip install -r requirements.txt
 ```
-
-For thib, my env is : /private/home/tlacroix/anaconda3/envs/genesis_llm
-
+Then in this repository
 ```
-torchrun --nproc_per_node 2 example.py --ckpt_dir /large_experiments/theorem/genesis/consolidated_ckpts/13B_1T_consolidated_fp16_mp2/ --tokenizer_path /large_experiments/theorem/datasets/tokenizers/tokenizer_final_32k.minus_inf_ws.model
+pip install -e .
+```
+
+### Inference
+The provided `example.py` can be run on a single or multi-gpu node with `torchrun` and will output completions for two pre-defined prompts :
+```
+torchrun --nproc_per_node MP example.py --ckpt_dir /path/to/checkpoint --tokenizer_path /path/to/tokenizer
 ```
