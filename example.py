@@ -1,4 +1,6 @@
+from typing import Tuple
 import os
+import sys
 import torch
 import fire
 import time
@@ -11,7 +13,7 @@ from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 from genesis_llm import ModelArgs, Transformer, Tokenizer, Genesis
 
 
-def main(ckpt_dir: str, tokenizer_path: str):
+def setup_model_parallel() -> Tuple[int, int]:
     local_rank = int(os.environ.get("LOCAL_RANK", -1))
     world_size = int(os.environ.get("WORLD_SIZE", -1))
 
@@ -19,20 +21,22 @@ def main(ckpt_dir: str, tokenizer_path: str):
     initialize_model_parallel(world_size)
     torch.cuda.set_device(local_rank)
 
+    # seed must be the same in all processes
     torch.manual_seed(1)
-    is_main = int(local_rank) == 0
+    return local_rank, world_size
+
+
+def load(ckpt_dir: str, tokenizer_path: str, local_rank: int, world_size: int) -> Genesis:
     start_time = time.time()
     checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
     assert (
-        world_size == checkpoints
+        world_size == len(checkpoints)
     ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {world_size}"
     ckpt_path = checkpoints[local_rank]
-    if is_main:
-        print("Loading")
+    print("Loading")
     checkpoint = torch.load(ckpt_path, map_location="cpu")
     with open(Path(ckpt_dir) / "params.json", "r") as f:
-        params = json.loads(f.read())["model"]  # TODO: clean
-    params = {x: y for x, y in params.items() if x in ModelArgs.fields()}
+        params = json.loads(f.read())
 
     model_args: ModelArgs = ModelArgs(max_seq_len=1024, max_batch_size=32, **params)
     tokenizer = Tokenizer(model_path=tokenizer_path)
@@ -43,16 +47,23 @@ def main(ckpt_dir: str, tokenizer_path: str):
     model.load_state_dict(checkpoint, strict=False)
 
     generator = Genesis(model, tokenizer)
-    if is_main:
-        print(f"Loaded in {time.time() - start_time:.2f} seconds")
+    print(f"Loaded in {time.time() - start_time:.2f} seconds")
+    return generator
 
+
+def main(ckpt_dir: str, tokenizer_path: str):
+    local_rank, world_size = setup_model_parallel()
+    if local_rank > 0:
+        sys.stdout = open(os.devnull, 'w')
+
+    generator = load(ckpt_dir, tokenizer_path, local_rank, world_size)
     prompts = ["Today I wrote a ", "Making an apple pie is easy, "]
 
     results = generator.generate(prompts, max_gen_len=256)
-    if is_main:
-        for prompt, result in zip(prompts, results):
-            print(prompt + result)
-            print("\n==================================\n")
+
+    for prompt, result in zip(prompts, results):
+        print(prompt + result)
+        print("\n==================================\n")
 
 
 if __name__ == "__main__":

@@ -28,17 +28,11 @@ class ModelArgs:
     n_layers: int = 8
     n_heads: int = 8
     vocab_size: int = -1  # defined later by tokenizer
-    ffn_dim_multiplier: float = 1.0
     multiple_of: int = 256  # make SwiGLU hidden layer size multiple of large power of 2
     norm_eps: float = 1e-5
-    norm_affine: bool = True
 
     max_batch_size: int = 32
     max_seq_len: int = 1024
-
-    @staticmethod
-    def fields() -> Set[str]:
-        return set([field.name for field in fields(ModelArgs)])
 
 
 class RMSNorm(torch.nn.Module):
