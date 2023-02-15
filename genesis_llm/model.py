@@ -132,7 +132,6 @@ class Attention(nn.Module):
         keys = self.cache_k[:bsz, : start_pos + seqlen]
         values = self.cache_v[:bsz, : start_pos + seqlen]
 
-        # (bs, n_local_heads, slen, head_dim)
         xq = xq.transpose(1, 2)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
@@ -144,6 +143,7 @@ class Attention(nn.Module):
         output = output.transpose(
             1, 2
         ).contiguous().view(bsz, seqlen, -1)
+
         return self.wo(output)
 
 

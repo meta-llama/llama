@@ -53,8 +53,7 @@ class Genesis:
         decoded = []
         for i, t in enumerate(tokens.tolist()):
             # cut to max gen len
-            n_tok_prompt = len(prompt_tokens[i])
-            t = t[n_tok_prompt : n_tok_prompt + max_gen_len]
+            t = t[: len(prompt_tokens[i]) + max_gen_len]
             # cut to eos tok if any
             try:
                 t = t[: t.index(self.tokenizer.eos_id)]
