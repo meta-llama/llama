@@ -57,7 +57,7 @@ def main(ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: fl
         sys.stdout = open(os.devnull, 'w')
 
     generator = load(ckpt_dir, tokenizer_path, local_rank, world_size)
-    prompts = ["Today I wrote a ", "Making an apple pie is easy, "]
+    prompts = ["Avocados are ", "Here is a sonnet about AI that I wrote: "]
 
     results = generator.generate(prompts, max_gen_len=256, temperature=temperature, top_p=top_p)
 
