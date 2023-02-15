@@ -6,7 +6,7 @@
 
 # Genesis language models
 
-This repository is intended as a minimal example to load [Genesis](http://link_to_the_paper) models and run inference.
+This repository is intended as a minimal, hackable and readable example to load [Genesis](http://link_to_the_paper) models and run inference.
 
 ### Setup
 In a conda env with pytorch / cuda available, run

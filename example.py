@@ -51,7 +51,7 @@ def load(ckpt_dir: str, tokenizer_path: str, local_rank: int, world_size: int) -
     return generator
 
 
-def main(ckpt_dir: str, tokenizer_path: str):
+def main(ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: float = 0.95):
     local_rank, world_size = setup_model_parallel()
     if local_rank > 0:
         sys.stdout = open(os.devnull, 'w')
@@ -59,7 +59,7 @@ def main(ckpt_dir: str, tokenizer_path: str):
     generator = load(ckpt_dir, tokenizer_path, local_rank, world_size)
     prompts = ["Today I wrote a ", "Making an apple pie is easy, "]
 
-    results = generator.generate(prompts, max_gen_len=256)
+    results = generator.generate(prompts, max_gen_len=256, temperature=temperature, top_p=top_p)
 
     for prompt, result in zip(prompts, results):
         print(prompt + result)

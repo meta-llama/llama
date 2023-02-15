@@ -1,5 +1,4 @@
 torch
-xformers==0.0.16
 fairscale
 fire
 sentencepiece

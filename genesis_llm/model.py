@@ -1,5 +1,6 @@
-from typing import Optional, Set
-from dataclasses import dataclass, fields
+from typing import Optional, Tuple
+from dataclasses import dataclass
+import math
 
 import torch
 from torch import nn
@@ -11,15 +12,6 @@ from fairscale.nn.model_parallel.layers import (
     RowParallelLinear,
     ColumnParallelLinear,
 )
-
-from xformers import ops as xops
-
-try:
-    from apex.normalization.fused_layer_norm import FusedRMSNorm
-except ModuleNotFoundError:
-    FusedRMSNorm = None
-
-from genesis_llm.rope import precompute_freqs_cis, apply_rotary_emb
 
 
 @dataclass
@@ -49,13 +41,33 @@ class RMSNorm(torch.nn.Module):
         return output * self.weight
 
 
-def create_norm_layer(dim: int, eps: float):
-    if FusedRMSNorm is not None:
-        return FusedRMSNorm(dim, eps=eps, elementwise_affine=True)
-    return RMSNorm(dim, eps)
+def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+    t = torch.arange(end, device=freqs.device)  # type: ignore
+    freqs = torch.outer(t, freqs).float()  # type: ignore
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
+    return freqs_cis
 
 
-FREQS_CIS: Optional[torch.Tensor] = None
+def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
+    ndim = x.ndim
+    assert 0 <= 1 < ndim
+    assert freqs_cis.shape == (x.shape[1], x.shape[-1])
+    shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
+    return freqs_cis.view(*shape)
+
+
+def apply_rotary_emb(
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_cis: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
+    xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
+    freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
+    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
+    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    return xq_out.type_as(xq), xk_out.type_as(xk)
 
 
 class Attention(nn.Module):
@@ -101,7 +113,7 @@ class Attention(nn.Module):
             (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
         ).cuda()
 
-    def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor):
+    def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
         bsz, seqlen, _ = x.shape
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
 
@@ -120,15 +132,18 @@ class Attention(nn.Module):
         keys = self.cache_k[:bsz, : start_pos + seqlen]
         values = self.cache_v[:bsz, : start_pos + seqlen]
 
-        attn_bias = xops.LowerTriangularMask() if seqlen > 1 else None
-        output = xops.memory_efficient_attention(
-            xq,
-            keys,
-            values,
-            p=0,
-            attn_bias=attn_bias,
-            op=None,  # xops.MemoryEfficientAttentionCutlassOp
-        ).reshape(bsz, seqlen, -1)
+        # (bs, n_local_heads, slen, head_dim)
+        xq = xq.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
+        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
+        if mask is not None:
+            scores = scores + mask  # (bs, n_local_heads, slen, cache_len + slen)
+        scores = F.softmax(scores.float(), dim=-1).type_as(xq)
+        output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
+        output = output.transpose(
+            1, 2
+        ).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
 
 
@@ -168,11 +183,11 @@ class TransformerBlock(nn.Module):
             dim=args.dim, hidden_dim=4 * args.dim, multiple_of=args.multiple_of
         )
         self.layer_id = layer_id
-        self.attention_norm = create_norm_layer(args.dim, eps=args.norm_eps)
-        self.ffn_norm = create_norm_layer(args.dim, eps=args.norm_eps)
+        self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
+        self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
 
-    def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor):
-        h = x + self.attention.forward(self.attention_norm(x), start_pos, freqs_cis)
+    def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
+        h = x + self.attention.forward(self.attention_norm(x), start_pos, freqs_cis, mask)
         out = h + self.feed_forward.forward(self.ffn_norm(h))
         return out
 
@@ -192,7 +207,7 @@ class Transformer(nn.Module):
         for layer_id in range(params.n_layers):
             self.layers.append(TransformerBlock(layer_id, params))
 
-        self.norm = create_norm_layer(params.dim, eps=params.norm_eps)
+        self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = ColumnParallelLinear(
             params.dim, params.vocab_size, bias=False, init_method=lambda x: x
         )
@@ -207,8 +222,14 @@ class Transformer(nn.Module):
         h = self.tok_embeddings(tokens)
         self.freqs_cis = self.freqs_cis.to(h.device)
         freqs_cis = self.freqs_cis[start_pos : start_pos + seqlen]
+
+        mask = None
+        if seqlen > 1:
+            mask = torch.full((1, 1, seqlen, seqlen), float("-inf"), device=tokens.device)
+            mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
+
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis)
+            h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)
         output = self.output(h[:, -1, :])  # only compute last logits
         return output.float()

@@ -15,8 +15,8 @@ class Genesis:
         self,
         prompts: List[str],
         max_gen_len: int,
-        temp: float = 0.9,
-        top_p: float = 0.8,
+        temperature: float = 0.8,
+        top_p: float = 0.95,
     ) -> List[str]:
         bsz = len(prompts)
         params = self.model.params
@@ -37,9 +37,11 @@ class Genesis:
         prev_pos = 0
         for cur_pos in range(start_pos, total_len):
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
-
-            probs = torch.softmax(logits / temp, dim=-1)
-            next_token = sample_top_p(probs, top_p)
+            if temperature > 0:
+                probs = torch.softmax(logits / temperature, dim=-1)
+                next_token = sample_top_p(probs, top_p)
+            else:
+                next_token = torch.argmax(logits, dim=-1)
             next_token = next_token.reshape(-1)
             # only replace token if prompt has already been generated
             next_token = torch.where(
