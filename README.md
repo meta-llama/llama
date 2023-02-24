@@ -1,4 +1,4 @@
-# LLaMA 
+# LLaMA
 
 This repository is intended as a minimal, hackable and readable example to load [LLaMA](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) models and run inference.
 In order to download the checkpoints and tokenizer, fill this [google form](https://forms.gle/jk851eBVbX1m5TAv5)
@@ -16,6 +16,7 @@ pip install -e .
 ### Download
 Once your request is approved, you will receive links to download the tokenizer and model files.
 Edit the `download.sh` script with the signed url provided in the email to download the model weights and tokenizer.
+You can also set `PRESIGNED_URL` and `TARGET_FOLDER` using environmental variables.
 
 ### Inference
 The provided `example.py` can be run on a single or multi-gpu node with `torchrun` and will output completions for two pre-defined prompts. Using `TARGET_FOLDER` as defined in `download.sh`:
