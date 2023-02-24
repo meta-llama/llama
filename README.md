@@ -16,7 +16,7 @@ pip install -e .
 ### Download
 Once your request is approved, you will receive links to download the tokenizer and model files.
 Edit the `download.sh` script with the signed url provided in the email to download the model weights and tokenizer.
-You can also set `PRESIGNED_URL` and `TARGET_FOLDER` using environmental variables.
+The download process can also be automated by setting the respective environmental variables (`PRESIGNED_URL` and `TARGET_FOLDER`).
 
 ### Inference
 The provided `example.py` can be run on a single or multi-gpu node with `torchrun` and will output completions for two pre-defined prompts. Using `TARGET_FOLDER` as defined in `download.sh`:
