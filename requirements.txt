@@ -1,0 +1,4 @@
+torch
+fairscale
+fire
+sentencepiece
