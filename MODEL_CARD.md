@@ -1,4 +1,4 @@
-# LLama Model Card
+# LLaMA Model Card
 
 ## Model details
 **Organization developing the model**
@@ -71,7 +71,7 @@ Hyperparameters for the model architecture
 <table>
     <thead>
             <tr>
-            <th >LLaMa</th> <th colspan=6>Model hyper parameters </th>
+            <th >LLaMA</th> <th colspan=6>Model hyper parameters </th>
             </tr>
             <tr>
             <th>Number of parameters</th><th>dimension</th><th>n heads</th><th>n layers</th><th>Learn rate</th><th>Batch size</th><th>n tokens</th>
@@ -100,7 +100,7 @@ We present our results on eight standard common sense reasoning benchmarks in th
 <table>
     <thead>
             <tr>
-            <th>LLaMa</th>  <th colspan=9>Reasoning tasks </th>
+            <th>LLaMA</th>  <th colspan=9>Reasoning tasks </th>
             </tr>
             <tr>
             <th>Number of parameters</th> <th>BoolQ</th><th>PIQA</th><th>SIQA</th><th>HellaSwag</th><th>WinoGrande</th><th>ARC-e</th><th>ARC-c</th><th>OBQA</th><th>COPA</th>
