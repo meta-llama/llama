@@ -29,7 +29,7 @@ Different models require different MP values:
 |--------|----|
 | 7B     | 1  |
 | 13B    | 2  |
-| 30B    | 4  |
+| 33B    | 4  |
 | 65B    | 8  |
 
 
