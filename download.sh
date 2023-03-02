@@ -13,6 +13,7 @@ N_SHARD_DICT["30B"]="3"
 N_SHARD_DICT["65B"]="7"
 
 echo "Downloading tokenizer"
+mkdir -p ${TARGET_FOLDER}
 wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
 wget ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
 
