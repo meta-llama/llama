@@ -32,6 +32,11 @@ Different models require different MP values:
 | 33B    | 4  |
 | 65B    | 8  |
 
+### FAQ
+- [1. The download.sh script doesn't work on default bash in MacOS X](FAQ.md#1)
+- [2. Generations are bad!](FAQ.md#2)
+- [3. CUDA Out of memory errors](FAQ.md#3)
+- [4. Other languages](FAQ.md#4)
 
 ### Model Card
 See [MODEL_CARD.md](MODEL_CARD.md)
