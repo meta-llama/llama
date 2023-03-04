@@ -8,6 +8,7 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
+import bitsandbytes as bnb
 
 import fairscale.nn.model_parallel.initialize as fs_init
 from fairscale.nn.model_parallel.layers import (
@@ -80,33 +81,25 @@ class Attention(nn.Module):
         self.n_local_heads = args.n_heads // fs_init.get_model_parallel_world_size()
         self.head_dim = args.dim // args.n_heads
 
-        self.wq = ColumnParallelLinear(
+        self.wq = torch.nn.Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
-            gather_output=False,
-            init_method=lambda x: x,
         )
-        self.wk = ColumnParallelLinear(
+        self.wk = torch.nn.Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
-            gather_output=False,
-            init_method=lambda x: x,
         )
-        self.wv = ColumnParallelLinear(
+        self.wv = torch.nn.Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
-            gather_output=False,
-            init_method=lambda x: x,
         )
-        self.wo = RowParallelLinear(
-            args.n_heads * self.head_dim,
+        self.wo = torch.nn.Linear(
             args.dim,
+            args.n_heads * self.head_dim,
             bias=False,
-            input_is_parallel=True,
-            init_method=lambda x: x,
         )
 
         self.cache_k = torch.zeros(
@@ -116,7 +109,13 @@ class Attention(nn.Module):
             (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
         ).cuda()
 
-    def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
+    def forward(
+        self,
+        x: torch.Tensor,
+        start_pos: int,
+        freqs_cis: torch.Tensor,
+        mask: Optional[torch.Tensor],
+    ):
         bsz, seqlen, _ = x.shape
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
 
@@ -143,9 +142,7 @@ class Attention(nn.Module):
             scores = scores + mask  # (bs, n_local_heads, slen, cache_len + slen)
         scores = F.softmax(scores.float(), dim=-1).type_as(xq)
         output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
-        output = output.transpose(
-            1, 2
-        ).contiguous().view(bsz, seqlen, -1)
+        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
 
         return self.wo(output)
 
@@ -161,14 +158,16 @@ class FeedForward(nn.Module):
         hidden_dim = int(2 * hidden_dim / 3)
         hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
 
-        self.w1 = ColumnParallelLinear(
-            dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
+        self.w1 = torch.nn.Linear(dim, hidden_dim, bias=False)
+        self.w2 = torch.nn.Linear(
+            hidden_dim,
+            dim,
+            bias=False,
         )
-        self.w2 = RowParallelLinear(
-            hidden_dim, dim, bias=False, input_is_parallel=True, init_method=lambda x: x
-        )
-        self.w3 = ColumnParallelLinear(
-            dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
+        self.w3 = torch.nn.Linear(
+            dim,
+            hidden_dim,
+            bias=False,
         )
 
     def forward(self, x):
@@ -189,10 +188,41 @@ class TransformerBlock(nn.Module):
         self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
         self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
 
-    def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
-        h = x + self.attention.forward(self.attention_norm(x), start_pos, freqs_cis, mask)
+    def forward(
+        self,
+        x: torch.Tensor,
+        start_pos: int,
+        freqs_cis: torch.Tensor,
+        mask: Optional[torch.Tensor],
+    ):
+        h = x + self.attention.forward(
+            self.attention_norm(x), start_pos, freqs_cis, mask
+        )
         out = h + self.feed_forward.forward(self.ffn_norm(h))
         return out
+
+
+class Int8Linear(torch.nn.Module):
+    def __init__(
+        self,
+        float_linear: torch.nn.Linear,
+    ) -> None:
+        super().__init__()
+        self.new_layer = bnb.nn.Linear8bitLt(
+            float_linear.in_features,
+            float_linear.out_features,
+            bias=float_linear.bias is not None,
+            has_fp16_weights=False,
+        )
+        self.new_layer._parameters["weight"] = bnb.nn.Int8Params(
+            float_linear.weight.data.cpu(), requires_grad=False, has_fp16_weights=False
+        )
+        # del float_linear.weight
+        if float_linear.bias is not None:
+            self.new_layer._parameters["bias"] = float_linear.bias
+
+    def forward(self, input):
+        return self.new_layer(input)
 
 
 class Transformer(nn.Module):
@@ -211,9 +241,7 @@ class Transformer(nn.Module):
             self.layers.append(TransformerBlock(layer_id, params))
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = ColumnParallelLinear(
-            params.dim, params.vocab_size, bias=False, init_method=lambda x: x
-        )
+        self.output = torch.nn.Linear(params.dim, params.vocab_size, bias=False)
 
         self.freqs_cis = precompute_freqs_cis(
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
@@ -228,7 +256,9 @@ class Transformer(nn.Module):
 
         mask = None
         if seqlen > 1:
-            mask = torch.full((1, 1, seqlen, seqlen), float("-inf"), device=tokens.device)
+            mask = torch.full(
+                (1, 1, seqlen, seqlen), float("-inf"), device=tokens.device
+            )
             mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
 
         for layer in self.layers:
@@ -236,3 +266,15 @@ class Transformer(nn.Module):
         h = self.norm(h)
         output = self.output(h[:, -1, :])  # only compute last logits
         return output.float()
+
+    def quantize(self):
+        for layer in self.layers:
+            layer.feed_forward.w1 = Int8Linear(layer.feed_forward.w1)
+            layer.feed_forward.w2 = Int8Linear(layer.feed_forward.w2)
+            layer.feed_forward.w3 = Int8Linear(layer.feed_forward.w3)
+            layer.attention.wo = Int8Linear(layer.attention.wo)
+            layer.attention.wq = Int8Linear(layer.attention.wq)
+            layer.attention.wk = Int8Linear(layer.attention.wk)
+            layer.attention.wv = Int8Linear(layer.attention.wv)
+        self.output = Int8Linear(self.output)
+        self.cuda()

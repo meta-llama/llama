@@ -44,6 +44,7 @@ def load(
     ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {world_size}"
     ckpt_path = checkpoints[local_rank]
     print("Loading")
+    print(ckpt_path)
     checkpoint = torch.load(ckpt_path, map_location="cpu")
     with open(Path(ckpt_dir) / "params.json", "r") as f:
         params = json.loads(f.read())
@@ -53,10 +54,12 @@ def load(
     )
     tokenizer = Tokenizer(model_path=tokenizer_path)
     model_args.vocab_size = tokenizer.n_words
-    torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    # torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    torch.set_default_tensor_type(torch.HalfTensor)
     model = Transformer(model_args)
     torch.set_default_tensor_type(torch.FloatTensor)
     model.load_state_dict(checkpoint, strict=False)
+    model.quantize()
 
     generator = LLaMA(model, tokenizer)
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
@@ -81,33 +84,13 @@ def main(
 
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
-        "I believe the meaning of life is",
-        "Simply put, the theory of relativity states that ",
-        "Building a website can be done in 10 simple steps:\n",
-        # Few shot prompts: https://huggingface.co/blog/few-shot-learning-gpt-neo-and-inference-api
-        """Tweet: "I hate it when my phone battery dies."
-Sentiment: Negative
-###
-Tweet: "My day has been 👍"
-Sentiment: Positive
-###
-Tweet: "This is the link to the article"
-Sentiment: Neutral
-###
-Tweet: "This new music video was incredibile"
-Sentiment:""",
-        """Translate English to French:
+        """I am a wolf shifter born with a human soul.
+Packless. Mateless. Unable to bond.
 
-sea otter => loutre de mer
-
-peppermint => menthe poivrée
-
-plush girafe => girafe peluche
-
-cheese =>""",
+Cast out of my pack,""",
     ]
     results = generator.generate(
-        prompts, max_gen_len=256, temperature=temperature, top_p=top_p
+        prompts, max_gen_len=1024, temperature=temperature, top_p=top_p
     )
 
     for result in results:
