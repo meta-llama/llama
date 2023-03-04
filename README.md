@@ -5,6 +5,8 @@ comfortably within 24 GiB of RAM.
 It relies almost entirely on the `bitsandbytes` and `LLM.int8()` work of Tim Dettmers.
 I've tested it on an RTX 4090, but it should work on a 3090!
 
+(It might also theoretically let you run LLaMA-65B on an A100, but I haven't tried this.)
+
 The code contains the following changes:
 
 - Loads all model_dicts into the same GPU
