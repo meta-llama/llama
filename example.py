@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 
 from fairscale.nn.model_parallel.initialize import initialize_model_parallel
-import tqdm
 
 from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 

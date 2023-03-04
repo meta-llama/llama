@@ -221,9 +221,12 @@ class Int8Linear(torch.nn.Module):
             float_linear.out_features,
             bias=float_linear.bias is not None,
             has_fp16_weights=False,
+            threshold=6.0,
         )
         self.new_layer._parameters["weight"] = bnb.nn.Int8Params(
-            float_linear.weight.data.cpu(), requires_grad=False, has_fp16_weights=False
+            float_linear.weight.data.cpu(),
+            requires_grad=False,
+            has_fp16_weights=False,
         )
         if float_linear.bias is not None:
             self.new_layer._parameters["bias"] = float_linear.bias
