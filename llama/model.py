@@ -16,6 +16,7 @@ from fairscale.nn.model_parallel.layers import (
     RowParallelLinear,
     ColumnParallelLinear,
 )
+import tqdm
 
 
 @dataclass
@@ -74,29 +75,36 @@ def apply_rotary_emb(
     return xq_out.type_as(xq), xk_out.type_as(xk)
 
 
+class UninitializedLinear(nn.Linear):
+    def reset_parameters(self) -> None:
+        pass
+
+
 class Attention(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
 
-        self.n_local_heads = args.n_heads // fs_init.get_model_parallel_world_size()
+        self.n_local_heads = (
+            args.n_heads // 1
+        )  # fs_init.get_model_parallel_world_size()
         self.head_dim = args.dim // args.n_heads
 
-        self.wq = torch.nn.Linear(
+        self.wq = UninitializedLinear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
         )
-        self.wk = torch.nn.Linear(
+        self.wk = UninitializedLinear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
         )
-        self.wv = torch.nn.Linear(
+        self.wv = UninitializedLinear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
         )
-        self.wo = torch.nn.Linear(
+        self.wo = UninitializedLinear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
@@ -158,13 +166,13 @@ class FeedForward(nn.Module):
         hidden_dim = int(2 * hidden_dim / 3)
         hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
 
-        self.w1 = torch.nn.Linear(dim, hidden_dim, bias=False)
-        self.w2 = torch.nn.Linear(
+        self.w1 = UninitializedLinear(dim, hidden_dim, bias=False)
+        self.w2 = UninitializedLinear(
             hidden_dim,
             dim,
             bias=False,
         )
-        self.w3 = torch.nn.Linear(
+        self.w3 = UninitializedLinear(
             dim,
             hidden_dim,
             bias=False,
@@ -205,7 +213,7 @@ class TransformerBlock(nn.Module):
 class Int8Linear(torch.nn.Module):
     def __init__(
         self,
-        float_linear: torch.nn.Linear,
+        float_linear: nn.Linear,
     ) -> None:
         super().__init__()
         self.new_layer = bnb.nn.Linear8bitLt(
@@ -217,7 +225,6 @@ class Int8Linear(torch.nn.Module):
         self.new_layer._parameters["weight"] = bnb.nn.Int8Params(
             float_linear.weight.data.cpu(), requires_grad=False, has_fp16_weights=False
         )
-        # del float_linear.weight
         if float_linear.bias is not None:
             self.new_layer._parameters["bias"] = float_linear.bias
 
@@ -232,16 +239,14 @@ class Transformer(nn.Module):
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
 
-        self.tok_embeddings = ParallelEmbedding(
-            params.vocab_size, params.dim, init_method=lambda x: x
-        )
+        self.tok_embeddings = torch.nn.Embedding(params.vocab_size, params.dim)
 
         self.layers = torch.nn.ModuleList()
         for layer_id in range(params.n_layers):
             self.layers.append(TransformerBlock(layer_id, params))
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = torch.nn.Linear(params.dim, params.vocab_size, bias=False)
+        self.output = UninitializedLinear(params.dim, params.vocab_size, bias=False)
 
         self.freqs_cis = precompute_freqs_cis(
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
@@ -268,13 +273,27 @@ class Transformer(nn.Module):
         return output.float()
 
     def quantize(self):
-        for layer in self.layers:
-            layer.feed_forward.w1 = Int8Linear(layer.feed_forward.w1)
-            layer.feed_forward.w2 = Int8Linear(layer.feed_forward.w2)
-            layer.feed_forward.w3 = Int8Linear(layer.feed_forward.w3)
-            layer.attention.wo = Int8Linear(layer.attention.wo)
-            layer.attention.wq = Int8Linear(layer.attention.wq)
-            layer.attention.wk = Int8Linear(layer.attention.wk)
-            layer.attention.wv = Int8Linear(layer.attention.wv)
-        self.output = Int8Linear(self.output)
+        # https://github.com/pytorch/vision/issues/2391#issuecomment-653900218
+        def get_layer(model, name):
+            layer = model
+            for attr in name.split("."):
+                layer = getattr(layer, attr)
+            return layer
+
+        def set_layer(model, name, layer):
+            try:
+                attrs, name = name.rsplit(".", 1)
+                model = get_layer(model, attrs)
+            except ValueError:
+                pass
+            setattr(model, name, layer)
+
+        linear_layers = {
+            k: v for k, v in self.named_modules() if isinstance(v, nn.Linear)
+        }
+
+        print("Quantizing", len(linear_layers), "layers")
+        for name, layer in tqdm.tqdm(linear_layers.items()):
+            new_layer = Int8Linear(layer)
+            set_layer(self, name, new_layer)
         self.cuda()
