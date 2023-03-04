@@ -1,45 +1,9 @@
-# LLaMA 
+# LLaMa CPU fork
 
-This repository is intended as a minimal, hackable and readable example to load [LLaMA](https://ai.facebook.com/blog/large-language-model-llama-meta-ai/) ([arXiv](https://arxiv.org/abs/2302.13971v1)) models and run inference.
-In order to download the checkpoints and tokenizer, fill this [google form](https://forms.gle/jk851eBVbX1m5TAv5)
+This is a fork of https://github.com/facebookresearch/llama to run on CPU.
 
-### Setup
-In a conda env with pytorch / cuda available, run
-```
-pip install -r requirements.txt
-```
-Then in this repository
-```
-pip install -e .
-```
+Usage and setup is exactly the same.
 
-### Download
-Once your request is approved, you will receive links to download the tokenizer and model files.
-Edit the `download.sh` script with the signed url provided in the email to download the model weights and tokenizer.
+Tested on 7B model. Even with 32GiB of ram, you'll need swap space or zram enabled to load the model (maybe it's doing some conversions?), but once it actually starts doing inference it settles down at a more reasonable <20GiB of ram.
 
-### Inference
-The provided `example.py` can be run on a single or multi-gpu node with `torchrun` and will output completions for two pre-defined prompts. Using `TARGET_FOLDER` as defined in `download.sh`:
-```
-torchrun --nproc_per_node MP example.py --ckpt_dir $TARGET_FOLDER/model_size --tokenizer_path $TARGET_FOLDER/tokenizer.model
-```
-
-Different models require different MP values:
-
-|  Model | MP |
-|--------|----|
-| 7B     | 1  |
-| 13B    | 2  |
-| 33B    | 4  |
-| 65B    | 8  |
-
-### FAQ
-- [1. The download.sh script doesn't work on default bash in MacOS X](FAQ.md#1)
-- [2. Generations are bad!](FAQ.md#2)
-- [3. CUDA Out of memory errors](FAQ.md#3)
-- [4. Other languages](FAQ.md#4)
-
-### Model Card
-See [MODEL_CARD.md](MODEL_CARD.md)
-
-### License
-See the [LICENSE](LICENSE) file.
+On a Ryzen 7900X, the 7B model is able to infer several words per second, quite a lot better than you'd expect!
