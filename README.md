@@ -2,6 +2,9 @@
 
 This repository is intended as a minimal, hackable and readable example to load [LLaMA](https://ai.facebook.com/blog/large-language-model-llama-meta-ai/) ([arXiv](https://arxiv.org/abs/2302.13971v1)) models and run inference.
 In order to download the checkpoints and tokenizer, fill this [google form](https://forms.gle/jk851eBVbX1m5TAv5)
+Alternatively you can dowanload them from huggingface to help us save bandwidth 
+65B-> https://huggingface.co/datasets/nyanko7/LLaMA-65B
+7B and 13B -> https://huggingface.co/ricecake/LLaMA/tree/main
 
 ## Setup
 
