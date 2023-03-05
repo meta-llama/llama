@@ -15,6 +15,7 @@ The code contains the following changes:
 On my Ubuntu machine with 64 GB of RAM and an RTX 4090, it takes about 25 seconds to load in the floats and quantize the model.
 Users should be ready to expand their swapfiles if they don't have enough RAM.
 Llamanon has also produced a [slightly uncouth user's guide](https://rentry.org/llama-tard) for using this repo, which I won't reproduce here but seems generally trustworthy.
+[You may need to build `bitsandbytes` from source.](https://github.com/facebookresearch/llama/issues/79#issuecomment-1454687232)
 
 If you have interesting ideas for further development, I can be reached at https://twitter.com/ecjwg.
 
