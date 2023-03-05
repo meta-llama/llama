@@ -73,6 +73,7 @@ def load(
                 parameter.data[:, size * i : size * (i + 1)] = checkpoint[
                     parameter_name
                 ]
+            del checkpoint[parameter_name]
         del checkpoint
 
     model.cuda()
