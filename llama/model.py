@@ -1,7 +1,9 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
-from typing import Optional, Tuple
+from contextvars import ContextVar
+
+from typing import Optional, Tuple, Type
 from dataclasses import dataclass
 import math
 
@@ -10,12 +12,6 @@ from torch import nn
 import torch.nn.functional as F
 import bitsandbytes as bnb
 
-import fairscale.nn.model_parallel.initialize as fs_init
-from fairscale.nn.model_parallel.layers import (
-    ParallelEmbedding,
-    RowParallelLinear,
-    ColumnParallelLinear,
-)
 import tqdm
 
 
@@ -80,6 +76,23 @@ class UninitializedLinear(nn.Linear):
         pass
 
 
+class InferenceQuantizedLinear(bnb.nn.Linear8bitLt):
+    def __init__(self, *args, **kwargs):
+        super().__init__(has_fp16_weights=False, *args, **kwargs)
+
+    def reset_parameters(self) -> None:
+        pass
+
+
+default_quantize: ContextVar[bool] = ContextVar("default_quantize", default=False)
+
+
+def get_linear_class() -> Type[nn.Linear]:
+    if default_quantize.get():
+        return InferenceQuantizedLinear
+    return UninitializedLinear
+
+
 class Attention(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
@@ -89,22 +102,23 @@ class Attention(nn.Module):
         )  # fs_init.get_model_parallel_world_size()
         self.head_dim = args.dim // args.n_heads
 
-        self.wq = UninitializedLinear(
+        Linear = get_linear_class()
+        self.wq = Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
         )
-        self.wk = UninitializedLinear(
+        self.wk = Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
         )
-        self.wv = UninitializedLinear(
+        self.wv = Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
         )
-        self.wo = UninitializedLinear(
+        self.wo = Linear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
@@ -166,13 +180,14 @@ class FeedForward(nn.Module):
         hidden_dim = int(2 * hidden_dim / 3)
         hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
 
-        self.w1 = UninitializedLinear(dim, hidden_dim, bias=False)
-        self.w2 = UninitializedLinear(
+        Linear = get_linear_class()
+        self.w1 = Linear(dim, hidden_dim, bias=False)
+        self.w2 = Linear(
             hidden_dim,
             dim,
             bias=False,
         )
-        self.w3 = UninitializedLinear(
+        self.w3 = Linear(
             dim,
             hidden_dim,
             bias=False,
@@ -210,29 +225,20 @@ class TransformerBlock(nn.Module):
         return out
 
 
-class Int8Linear(torch.nn.Module):
-    def __init__(
-        self,
-        float_linear: nn.Linear,
-    ) -> None:
-        super().__init__()
-        self.new_layer = bnb.nn.Linear8bitLt(
-            float_linear.in_features,
-            float_linear.out_features,
-            bias=float_linear.bias is not None,
-            has_fp16_weights=False,
-            threshold=6.0,
-        )
-        self.new_layer._parameters["weight"] = bnb.nn.Int8Params(
-            float_linear.weight.data.cpu(),
-            requires_grad=False,
-            has_fp16_weights=False,
-        )
-        if float_linear.bias is not None:
-            self.new_layer._parameters["bias"] = float_linear.bias
-
-    def forward(self, input):
-        return self.new_layer(input)
+def convert_linear_to_bnb(float_linear):
+    new_layer = InferenceQuantizedLinear(
+        float_linear.in_features,
+        float_linear.out_features,
+        bias=float_linear.bias is not None,
+    )
+    new_layer._parameters["weight"] = bnb.nn.Int8Params(
+        float_linear.weight.data.cpu(),
+        requires_grad=False,
+        has_fp16_weights=False,
+    )
+    if float_linear.bias is not None:
+        new_layer._parameters["bias"] = float_linear.bias
+    return new_layer
 
 
 class Transformer(nn.Module):
@@ -249,7 +255,9 @@ class Transformer(nn.Module):
             self.layers.append(TransformerBlock(layer_id, params))
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = UninitializedLinear(params.dim, params.vocab_size, bias=False)
+
+        Linear = get_linear_class()
+        self.output = Linear(params.dim, params.vocab_size, bias=False)
 
         self.freqs_cis = precompute_freqs_cis(
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
@@ -297,6 +305,6 @@ class Transformer(nn.Module):
 
         print("Quantizing", len(linear_layers), "layers")
         for name, layer in tqdm.tqdm(linear_layers.items()):
-            new_layer = Int8Linear(layer)
+            new_layer = convert_linear_to_bnb(layer)
             set_layer(self, name, new_layer)
         self.cuda()

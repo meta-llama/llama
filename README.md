@@ -1,21 +1,21 @@
 # LLaMA: INT8 edition
 
-This is a hasty fork of the LLaMA code that runs LLaMA-13B
+This is a fork of the LLaMA code that runs LLaMA-13B
 comfortably within 24 GiB of RAM.
 It relies almost entirely on the `bitsandbytes` and `LLM.int8()` work of Tim Dettmers.
-I've tested it on an RTX 4090, but it should work on a 3090!
-
-(It might also theoretically let you run LLaMA-65B on an A100, but I haven't tried this.)
+I've tested it on an RTX 4090, and it [reportedly works on the 3090](https://github.com/facebookresearch/llama/issues/79#issuecomment-1454687232). It might also theoretically allow us to run LLaMA-65B on an 80GB A100, but I haven't tried this.
 
 The code contains the following changes:
 
-- Loads all model_dicts into the same GPU
-- Loads existing weights from specified directory
-- Quantizes loaded layers on the host machine after weights are loaded.
+- Removes parallelism constructs
+- Quantizes weights on the host machine
+- Loads weights incrementally to avoid severe memory problems
 - Added dependencies on `bitsandbytes`, `tqdm`.
 
-It takes over a minute, and up to 50 GB of RAM, to load in the floats and quantize the model, and it's far from optimal re: throughput.
-Someone (maybe me) should publish quantized weights to get around this!
+Users should build `bitsandbytes` from source, as outlined [here](https://github.com/TimDettmers/bitsandbytes/blob/main/compile_from_source.md), and be ready to expand their swapfiles if they don't have enough RAM.
+On my Ubuntu machine with 64 GB of RAM and an RTX 4090, it takes about 25 seconds to load in the floats and quantize the model.
+
+If you have interesting ideas for further development, I can be reached on Twitter: https://twitter.com/ecjwg.
 
 ## Usage:
 
