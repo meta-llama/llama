@@ -12,10 +12,11 @@ The code contains the following changes:
 - Loads weights incrementally to avoid severe memory problems
 - Added dependencies on `bitsandbytes`, `tqdm`.
 
-Users should build `bitsandbytes` from source, as outlined [here](https://github.com/TimDettmers/bitsandbytes/blob/main/compile_from_source.md), and be ready to expand their swapfiles if they don't have enough RAM.
 On my Ubuntu machine with 64 GB of RAM and an RTX 4090, it takes about 25 seconds to load in the floats and quantize the model.
+Users should be ready to expand their swapfiles if they don't have enough RAM.
+Llamanon has also produced a [slightly uncouth user's guide](https://rentry.org/llama-tard) for using this repo, which I won't reproduce here but seems generally trustworthy.
 
-If you have interesting ideas for further development, I can be reached on Twitter: https://twitter.com/ecjwg.
+If you have interesting ideas for further development, I can be reached at https://twitter.com/ecjwg.
 
 ## Usage:
 
