@@ -5,11 +5,11 @@ In order to download the checkpoints and tokenizer, fill this [google form](http
 
 ## Setup
 
-In a conda env with pytorch / cuda available, run
+In a conda env with pytorch / cuda available, run:
 ```
 pip install -r requirements.txt
 ```
-Then in this repository
+Then in this repository:
 ```
 pip install -e .
 ```
