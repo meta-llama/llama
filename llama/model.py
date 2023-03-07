@@ -78,7 +78,7 @@ class UninitializedLinear(nn.Linear):
 
 class InferenceQuantizedLinear(bnb.nn.Linear8bitLt):
     def __init__(self, *args, **kwargs):
-        super().__init__(has_fp16_weights=False, *args, **kwargs)
+        super().__init__(has_fp16_weights=False, threshold=6.0, *args, **kwargs)
 
     def reset_parameters(self) -> None:
         pass
