@@ -18,6 +18,7 @@ def load(
     tokenizer_path: str,
     max_seq_len: int,
     max_batch_size: int,
+    quantize: bool,
 ) -> LLaMA:
     start_time = time.time()
     checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
@@ -33,9 +34,9 @@ def load(
 
     torch.set_default_tensor_type(torch.HalfTensor)
     print("Allocating transformer on host")
-    ctx_tok = default_quantize.set(True)
+    ctx_tok = default_quantize.set(quantize)
     model = Transformer(model_args)
-    default_quantize.set(ctx_tok)
+    default_quantize.reset(ctx_tok)
     key_to_dim = {
         "w1": 0,
         "w2": -1,
@@ -95,8 +96,9 @@ def main(
     repetition_penalty: float = 1.15,
     max_seq_len: int = 512,
     max_batch_size: int = 32,
+    use_int8: bool = True,
 ):
-    generator = load(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size)
+    generator = load(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size, use_int8)
 
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
