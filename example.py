@@ -106,14 +106,14 @@ plush girafe => girafe peluche
 
 cheese =>""",
     ]
-    results = generator.generate(
-        prompts, max_gen_len=256, temperature=temperature, top_p=top_p
-    )
+    for idx in range(0, len(prompts), max_batch_size):
+        actual_prompts = prompts[idx:idx+max_batch_size]
+        results = generator.generate(actual_prompts, max_gen_len=256, temperature=temperature, top_p=top_p)
 
-    for result in results:
-        print(result)
-        print("\n==================================\n")
-
+        for result in results:
+            print(result)
+            print("\n==================================\n")
+            
 
 if __name__ == "__main__":
     fire.Fire(main)
