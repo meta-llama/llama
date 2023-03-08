@@ -1,11 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
-from sentencepiece import SentencePieceProcessor
+import os
 from logging import getLogger
 from typing import List
-import os
 
+from sentencepiece import SentencePieceProcessor
 
 logger = getLogger()
 
@@ -15,7 +15,7 @@ class Tokenizer:
         # reload tokenizer
         assert os.path.isfile(model_path), model_path
         self.sp_model = SentencePieceProcessor(model_file=model_path)
-        logger.info(f"Reloaded SentencePiece model from {model_path}")
+        logger.info(f'Reloaded SentencePiece model from {model_path}')
 
         # BOS / EOS token IDs
         self.n_words: int = self.sp_model.vocab_size()
@@ -23,7 +23,7 @@ class Tokenizer:
         self.eos_id: int = self.sp_model.eos_id()
         self.pad_id: int = self.sp_model.pad_id()
         logger.info(
-            f"#words: {self.n_words} - BOS ID: {self.bos_id} - EOS ID: {self.eos_id}"
+            f'#words: {self.n_words} - BOS ID: {self.bos_id} - EOS ID: {self.eos_id}'
         )
         assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
 

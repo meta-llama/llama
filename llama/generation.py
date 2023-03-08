@@ -5,8 +5,8 @@ from typing import List
 
 import torch
 
-from llama.tokenizer import Tokenizer
 from llama.model import Transformer
+from llama.tokenizer import Tokenizer
 
 
 class LLaMA:

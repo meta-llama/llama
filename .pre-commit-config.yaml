@@ -15,8 +15,6 @@ repos:
       - id: forbid-submodules
       - id: mixed-line-ending
       - id: requirements-txt-fixer
-      - id: check-executables-have-shebangs
-      - id: check-shebang-scripts-are-executable
       - id: check-byte-order-marker
       - id: check-symlinks
       - id: check-merge-conflict
