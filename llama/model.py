@@ -1,20 +1,17 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
-from typing import Optional, Tuple
-from dataclasses import dataclass
 import math
-
-import torch
-from torch import nn
-import torch.nn.functional as F
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
 import fairscale.nn.model_parallel.initialize as fs_init
-from fairscale.nn.model_parallel.layers import (
-    ParallelEmbedding,
-    RowParallelLinear,
-    ColumnParallelLinear,
-)
+import torch
+import torch.nn.functional as F
+from fairscale.nn.model_parallel.layers import (ColumnParallelLinear,
+                                                ParallelEmbedding,
+                                                RowParallelLinear)
+from torch import nn
 
 
 @dataclass
@@ -228,7 +225,7 @@ class Transformer(nn.Module):
 
         mask = None
         if seqlen > 1:
-            mask = torch.full((1, 1, seqlen, seqlen), float("-inf"), device=tokens.device)
+            mask = torch.full((1, 1, seqlen, seqlen), float('-inf'), device=tokens.device)
             mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
 
         for layer in self.layers:
