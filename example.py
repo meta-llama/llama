@@ -106,19 +106,14 @@ plush girafe => girafe peluche
 
 cheese =>""",
     ]
-    if max_batch_size==1:
-        for prompt in prompts:
-            print(generator.generate([prompt], max_gen_len=256, temperature=temperature, top_p=top_p))
-            print("\n==================================\n")
-    else:    
-        results = generator.generate(
-            prompts, max_gen_len=256, temperature=temperature, top_p=top_p
-        )
+    for idx in range(0, len(prompts), max_batch_size):
+        actual_prompts = prompts[idx:idx+max_batch_size]
+        results = generator.generate(actual_prompts, max_gen_len=256, temperature=temperature, top_p=top_p)
 
         for result in results:
             print(result)
             print("\n==================================\n")
-
+            
 
 if __name__ == "__main__":
     fire.Fire(main)
