@@ -92,5 +92,4 @@ demo = gr.Interface(
     outputs = "text",
 )
 
-# To create a public link, set `share=True` in `launch()`.
-demo.launch(share=True)
+demo.launch(server_name="0.0.0.0")
