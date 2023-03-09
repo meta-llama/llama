@@ -14,6 +14,6 @@ RUN pip install wheel && \
     pip install gradio
 
 COPY app ./
-COPY webui/llama.py ./
+COPY webui/llama.py ./webapp.py
 
 CMD ["torchrun", "--nproc_per_node", "1", "webapp.py"]
