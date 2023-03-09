@@ -7,5 +7,5 @@ RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && 
 
 RUN pip install pyllama gradio
 RUN git clone https://github.com/juncongmoo/pyllama.git && \
-    cp -r ./pyllama/* ./ && \
-    rm -rf pyllma
+    cd pyllama && git checkout 450d6864cff174c39687f341601c399f87886b2c && cd .. && \
+    cp -r ./pyllama/* ./ && rm -rf pyllma
