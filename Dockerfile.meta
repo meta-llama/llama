@@ -13,3 +13,5 @@ RUN pip install wheel && \
     pip install -e . && \
     pip install gradio
 
+COPY app ./
+COPY webui.py ./
