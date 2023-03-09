@@ -1,0 +1,15 @@
+FROM nvcr.io/nvidia/pytorch:23.01-py3
+LABEL org.opencontainers.image.authors="soulteary@gmail.com"
+WORKDIR /app
+
+COPY app/requirements.txt ./
+COPY app/setup.py ./
+
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python -m pip install --upgrade pip
+RUN pip install wheel && \
+    python setup.py bdist_wheel && \
+    pip install -r requirements.txt && \
+    pip install -e .
+    pip install gradio
+
