@@ -81,5 +81,4 @@ if __name__ == '__main__':
         outputs = "text",
     )
 
-    # To create a public link, set `share=True` in `launch()`.
-    demo.launch(share=True)
+    demo.launch(server_name="0.0.0.0")
