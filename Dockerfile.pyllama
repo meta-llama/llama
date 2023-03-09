@@ -1,0 +1,8 @@
+FROM nvcr.io/nvidia/pytorch:23.01-py3
+LABEL org.opencontainers.image.authors="soulteary@gmail.com"
+WORKDIR /app
+
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python -m pip install --upgrade pip
+
+RUN pip install pyllama
