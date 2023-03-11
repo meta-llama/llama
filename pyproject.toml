@@ -1,0 +1,33 @@
+[project]
+authors = [
+  {name = "timlacroix", email = "t@fb.me"},
+  {name = "glample", email = "t@fb.me"},
+  {name = "Loryhoof", email = "t@fb.me"},
+  {name = "MarkSchmidty", email = "t@fb.me"},
+  {name = "guangyusong", email = "t@fb.me"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+]
+description = "Inference code for LLaMA models."
+keywords = ["LLaMA", "Pytorch"]
+license = {file = "LICENSE.txt"}
+name = "llama"
+readme = "README.md"
+requires-python = ">=3.8"
+version = "0.0.0"
+
+dependencies = [
+  "torch >= 1.0.0",
+  "fairscale >= 0.4.0",
+  "fire >= 0.2.0",
+  "sentencepiece >= 0.1.0",
+]
+
+[project.optional-dependencies]
+dev = []
+
+[project.urls]
+homepage = "https://ai.facebook.com/blog/large-language-model-llama-meta-ai/"
+repository = "https://github.com/facebookresearch/llama"
