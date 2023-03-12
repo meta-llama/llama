@@ -20,7 +20,7 @@ More information can be found in the paper “LLaMA, Open and Efficient Foundati
 https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/
 
 **License**
-Non-commercial bespoke license
+Apache 2.0
 
 **Where to send questions or comments about the model**
 Questions and comments about LLaMA can be sent via the [GitHub repository](https://github.com/facebookresearch/llama) of the project , by opening an issue.
