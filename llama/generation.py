@@ -42,7 +42,7 @@ class LLaMA:
         start_pos = min_prompt_size
         prev_pos = 0
         for cur_pos in range(start_pos, total_len):
-            logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos).to(tokens.device)
             if temperature > 0:
                 next_token_scores = apply_top_p(logits, top_p)
                 next_token_scores = apply_temperature(next_token_scores, temperature)

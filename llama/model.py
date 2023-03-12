@@ -12,6 +12,7 @@ from torch import nn
 import torch.nn.functional as F
 import bitsandbytes as bnb
 
+
 import tqdm
 
 
@@ -126,10 +127,10 @@ class Attention(nn.Module):
 
         self.cache_k = torch.zeros(
             (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
-        ).cuda()
+        )
         self.cache_v = torch.zeros(
             (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
-        ).cuda()
+        )
 
     def forward(
         self,
@@ -262,9 +263,12 @@ class Transformer(nn.Module):
         self.freqs_cis = precompute_freqs_cis(
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
+        
+        self.cuda_device_count = torch.cuda.device_count()
 
     @torch.inference_mode()
     def forward(self, tokens: torch.Tensor, start_pos: int):
+        tokens = tokens.to(self.tok_embeddings.weight.device)
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
         self.freqs_cis = self.freqs_cis.to(h.device)
@@ -276,8 +280,12 @@ class Transformer(nn.Module):
                 (1, 1, seqlen, seqlen), float("-inf"), device=tokens.device
             )
             mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
-
+            
         for layer in self.layers:
+            layer_device = layer.feed_forward.w1.weight.device
+            mask = None if mask is None else mask.to(layer_device)
+            h = h.to(layer_device)
+            freqs_cis = freqs_cis.to(layer_device)
             h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)
         output = self.output(h[:, -1, :])  # only compute last logits
@@ -308,3 +316,18 @@ class Transformer(nn.Module):
             new_layer = convert_linear_to_bnb(layer)
             set_layer(self, name, new_layer)
         self.cuda()
+        
+    def cuda(self):
+        assert self.cuda_device_count > 0, f"Expect available CUDA device >=0, but got {self.cuda_device_count}"
+        
+        self.tok_embeddings.to(0)
+        self.freqs_cis.to(0)
+        self.norm.to(self.cuda_device_count-1)
+        self.output.to(self.cuda_device_count-1)
+        n_layers = len(self.layers)
+        n_layers_per_device = int(math.ceil(n_layers / self.cuda_device_count))
+        
+        for idx, layer in enumerate(self.layers):
+            layer_device = math.floor(idx / n_layers_per_device)
+            layer = layer.to(layer_device)
+
