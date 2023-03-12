@@ -1,6 +1,6 @@
 # LLaMA Docker Playground
 
-A "Clean and Hygienic" LLaMA Playground, Play LLaMA with 10GB or 20GB of VRAM.
+A "Clean and Hygienic" LLaMA Playground, Play LLaMA with 7GB (int8) 10GB (pyllama) or 20GB (official) of VRAM.
 
 ## How to use
 
