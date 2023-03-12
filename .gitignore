@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+data/
+*.csv
+# evaluate sat.py
+
 # Distribution / packaging
 .Python
 build/

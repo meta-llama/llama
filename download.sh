@@ -1,9 +1,9 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
-PRESIGNED_URL="" # edit this with the presigned url
+PRESIGNED_URL="https://agi.gpt4.org/llama/LLaMA/*" # edit this with the presigned url
 MODEL_SIZE="7B,13B,30B,65B"             # edit this list with the model sizes you wish to download
-TARGET_FOLDER=""             # where all files should end up 
+TARGET_FOLDER="/data"             # where all files should end up 
 
 declare -A N_SHARD_DICT
 
@@ -42,7 +42,6 @@ do
         checklist_file="${TARGET_FOLDER}/${i}/checklist.chk"
         echo "${checklist_file##*/}"
         checksum=$(grep "${file_name##*/}" "${checklist_file}" | cut -d' ' -f1)
-        # echo $(cd ${TARGET_FOLDER}"/${i}" && md5sum 'consolidated.00.pth' | cut -d' ' -f1)
 
         if cd "${TARGET_FOLDER}/${i}" && ! [[ -f "${file_name}" ]] || ! [[ $(md5sum "${file_name}" | cut -d' ' -f1) == "${checksum}" ]]; then
             wget ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
