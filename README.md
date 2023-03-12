@@ -57,22 +57,22 @@ docker build -t soulteary/llama:int8 . -f docker/Dockerfile.int8
 
 ### Play with the LLaMA
 
-For official model docker images, use the following command:
+For official model docker images (7B almost 21GB), use the following command:
 
 ```bash
 docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/app/models -p 7860:7860 -it --rm soulteary/llama:llama
 ```
 
-For lower memory requirements docker images, use the following command:
+For lower memory requirements (7B almost 13GB) docker images, use the following command:
 
 ```bash
 docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/llama_data -p 7860:7860 -it --rm soulteary/llama:pyllama
 ```
 
-For **the minimum memory** requirements docker images, use the following command:
+For **the minimum memory** requirements (7B almost 7.12GB) docker images, use the following command:
 
 ```bash
-docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/llama_data -p 7860:7860 -it --rm soulteary/llama:int8
+docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/app/models -p 7860:7860 -it --rm soulteary/llama:int8
 ```
 
 
