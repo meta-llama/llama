@@ -16,7 +16,7 @@ from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 
 
-def setup_model_parallel() -> Tuple[int, int]:
+def setup_model_parallel(seed: int) -> Tuple[int, int]:
     local_rank = int(os.environ.get("LOCAL_RANK", -1))
     world_size = int(os.environ.get("WORLD_SIZE", -1))
 
@@ -25,7 +25,7 @@ def setup_model_parallel() -> Tuple[int, int]:
     torch.cuda.set_device(local_rank)
 
     # seed must be the same in all processes
-    torch.manual_seed(1)
+    torch.manual_seed(seed)
     return local_rank, world_size
 
 
@@ -66,14 +66,34 @@ def load(
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
-    temperature: float = 0.8,
-    top_p: float = 0.95,
+    temperature: float = 0.7,
+    # top_p: float = 0.95,
+    top_p: float = 0.0,
+    top_k: int = 40,
+    repetition_penalty: float = (1 / 0.85),
     max_seq_len: int = 512,
+    max_gen_len: int = 256,
     max_batch_size: int = 32,
+    seed: int = 1,
+    count: int = 5,
 ):
-    local_rank, world_size = setup_model_parallel()
+    local_rank, world_size = setup_model_parallel(seed)
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
+
+    print("\n")
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(json.dumps(dict(
+        seed=seed,
+        temp=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        repetition_penalty=repetition_penalty,
+        max_seq_len=max_seq_len,
+        max_gen_len=max_gen_len,
+    )))
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
 
     generator = load(
         ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size
@@ -81,38 +101,62 @@ def main(
 
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
-        "I believe the meaning of life is",
-        "Simply put, the theory of relativity states that ",
-        "Building a website can be done in 10 simple steps:\n",
-        # Few shot prompts: https://huggingface.co/blog/few-shot-learning-gpt-neo-and-inference-api
-        """Tweet: "I hate it when my phone battery dies."
-Sentiment: Negative
-###
-Tweet: "My day has been 👍"
-Sentiment: Positive
-###
-Tweet: "This is the link to the article"
-Sentiment: Neutral
-###
-Tweet: "This new music video was incredibile"
-Sentiment:""",
-        """Translate English to French:
 
-sea otter => loutre de mer
+        # "I believe the meaning of life is",
+        # "Simply put, the theory of relativity states that",
+        # "Building a website can be done in a few simple steps:\n1.",
+        # "Here's how to build it in a few simple steps:\n1.",
 
-peppermint => menthe poivrée
+        "This is Captain Jean-Luc Picard",
+        "I am Lieutenant Commander Data",
+        "The Klingons are attacking",
 
-plush girafe => girafe peluche
-
-cheese =>""",
+#         # Few shot prompts: https://huggingface.co/blog/few-shot-learning-gpt-neo-and-inference-api
+#         """Tweet: "I hate it when my phone battery dies."
+# Sentiment: Negative
+# ###
+# Tweet: "My day has been 👍"
+# Sentiment: Positive
+# ###
+# Tweet: "This is the link to the article"
+# Sentiment: Neutral
+# ###
+# Tweet: "This new music video was incredibile"
+# Sentiment:""",
+#         """Translate English to French:
+#
+# sea otter => loutre de mer
+#
+# peppermint => menthe poivrée
+#
+# plush girafe => girafe peluche
+#
+# cheese =>""",
     ]
-    results = generator.generate(
-        prompts, max_gen_len=256, temperature=temperature, top_p=top_p
-    )
-
-    for result in results:
-        print(result)
-        print("\n==================================\n")
+    i = 0
+    while i < count or count <= 0:
+        i += 1
+        for prompt in prompts:
+            print(f"\n============== sample {i} =================\n")
+            width = 0
+            def callback(text):
+                nonlocal width
+                text = text.replace('\n', '\n\n')
+                chars = []
+                for i, c in enumerate(text):
+                    if c == ' ' and width >= 60:
+                        chars.append('\n')
+                        width = 0
+                    else:
+                        width += 1
+                        chars.append(c)
+                        if c == '\n':
+                            width = 0
+                text = ''.join(chars)
+                print(text, end='', flush=True)
+            text, = generator.generate(
+                [prompt], max_gen_len=max_gen_len, temperature=temperature, top_p=top_p, top_k=top_k, repetition_penalty=repetition_penalty, token_callback=callback,
+            )
 
 
 if __name__ == "__main__":
