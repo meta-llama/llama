@@ -10,9 +10,10 @@ from llama.model import Transformer
 
 
 class LLaMA:
-    def __init__(self, model: Transformer, tokenizer: Tokenizer):
+    def __init__(self, model: Transformer, tokenizer: Tokenizer, is_gpu: bool):
         self.model = model
         self.tokenizer = tokenizer
+        self.is_gpu = is_gpu
 
     def generate(
         self,
@@ -31,8 +32,9 @@ class LLaMA:
         max_prompt_size = max([len(t) for t in prompt_tokens])
 
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_size)
+        tokens = torch.full((bsz, total_len), self.tokenizer.pad_id)
+        tokens = tokens.cuda().long() if self.is_gpu else tokens.long()
 
-        tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).cuda().long()
         for k, t in enumerate(prompt_tokens):
             tokens[k, : len(t)] = torch.tensor(t).long()
         input_text_mask = tokens != self.tokenizer.pad_id
