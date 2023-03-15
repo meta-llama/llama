@@ -78,7 +78,7 @@ def main(
     is_gpu: Union[int, bool] = 1,
 ):
     is_gpu = bool(is_gpu)
-    print(f'is_gpu: {is_gpu}')
+
     local_rank, world_size = setup_model_parallel(is_gpu)
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
