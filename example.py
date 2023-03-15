@@ -1,7 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the GNU General Public License version 3.
 
-from typing import Tuple
+from typing import Tuple, Union
 import os
 import sys
 import torch
@@ -16,13 +16,17 @@ from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 
 
-def setup_model_parallel() -> Tuple[int, int]:
+def setup_model_parallel(is_gpu: bool) -> Tuple[int, int]:
     local_rank = int(os.environ.get("LOCAL_RANK", -1))
     world_size = int(os.environ.get("WORLD_SIZE", -1))
 
-    torch.distributed.init_process_group("nccl")
-    initialize_model_parallel(world_size)
-    torch.cuda.set_device(local_rank)
+    if is_gpu:
+        torch.distributed.init_process_group("nccl")
+        initialize_model_parallel(world_size)
+        torch.cuda.set_device(local_rank)
+    else:
+        torch.distributed.init_process_group("gloo")
+        initialize_model_parallel(world_size)    
 
     # seed must be the same in all processes
     torch.manual_seed(1)
@@ -36,6 +40,7 @@ def load(
     world_size: int,
     max_seq_len: int,
     max_batch_size: int,
+    is_gpu: bool,
 ) -> LLaMA:
     start_time = time.time()
     checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
@@ -49,16 +54,16 @@ def load(
         params = json.loads(f.read())
 
     model_args: ModelArgs = ModelArgs(
-        max_seq_len=max_seq_len, max_batch_size=max_batch_size, **params
+        max_seq_len=max_seq_len, max_batch_size=max_batch_size, is_gpu=is_gpu, **params
     )
     tokenizer = Tokenizer(model_path=tokenizer_path)
     model_args.vocab_size = tokenizer.n_words
-    torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    torch.set_default_tensor_type(torch.cuda.HalfTensor if is_gpu else torch.FloatTensor)
     model = Transformer(model_args)
     torch.set_default_tensor_type(torch.FloatTensor)
     model.load_state_dict(checkpoint, strict=False)
 
-    generator = LLaMA(model, tokenizer)
+    generator = LLaMA(model, tokenizer, is_gpu)
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
     return generator
 
@@ -70,15 +75,19 @@ def main(
     top_p: float = 0.95,
     max_seq_len: int = 512,
     max_batch_size: int = 32,
+    is_gpu: Union[int, bool] = 1,
 ):
-    local_rank, world_size = setup_model_parallel()
+    is_gpu = bool(is_gpu)
+    print(f'is_gpu: {is_gpu}')
+    local_rank, world_size = setup_model_parallel(is_gpu)
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
 
     generator = load(
-        ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size
+        ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size, is_gpu
     )
 
+    start_generation_time = time.time()
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
         "I believe the meaning of life is",
@@ -109,6 +118,7 @@ cheese =>""",
     results = generator.generate(
         prompts, max_gen_len=256, temperature=temperature, top_p=top_p
     )
+    print(f"Generated in {time.time() - start_generation_time:.2f} seconds")
 
     for result in results:
         print(result)
