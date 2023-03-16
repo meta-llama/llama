@@ -8,6 +8,7 @@ import torch
 import fire
 import time
 import json
+import re
 
 from pathlib import Path
 
@@ -41,7 +42,7 @@ def load(ckpt_dir: str, tokenizer_path: str, local_rank: int, world_size: int) -
     with open(Path(ckpt_dir) / "params.json", "r") as f:
         params = json.loads(f.read())
 
-    model_args: ModelArgs = ModelArgs(max_seq_len=1024, max_batch_size=32, **params)
+    model_args: ModelArgs = ModelArgs(max_seq_len=1350, max_batch_size=32, **params)
     tokenizer = Tokenizer(model_path=tokenizer_path)
     model_args.vocab_size = tokenizer.n_words
     torch.set_default_tensor_type(torch.cuda.HalfTensor)
@@ -53,30 +54,33 @@ def load(ckpt_dir: str, tokenizer_path: str, local_rank: int, world_size: int) -
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
     return generator
 
-def generate(prompts: list, ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: float = 0.95):
-    local_rank, world_size = setup_model_parallel()
-    if local_rank > 0:
-        sys.stdout = open(os.devnull, 'w')
-
-    generator = load(ckpt_dir, tokenizer_path, local_rank, world_size)
-    results = generator.generate(prompts, max_gen_len=2, temperature=temperature, top_p=top_p)
+def generate(prompts: list, generator, ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: float = 0.95):
+    g = generator
+    results = g.generate(prompts, max_gen_len=5, temperature=temperature, top_p=top_p)
     return results
 
-def evaluate_sat(sat):
+def evaluate_sat(sat, g):
     df = sat
     # answers = []
     score = 0
     results = []
-    q = [i[:100] for i in df['text']]
-    answers = generate(q, '/home/ubuntu/llama/data/7B', '/home/ubuntu/llama/data/tokenizer.model', 0.2, 0.95)
+    q = ['Answer this question-'+str(i) for i in df['text']]
+    # print("duck")
+    # print(q)
+    answers = generate(q, g, '/home/ubuntu/llama/data/65B', '/home/ubuntu/llama/data/tokenizer.model', 0.2, 0.95)
+    # print(answers)
     
     for i in range(len(answers)):
         x = answers[i].replace('<pad>', '').replace('</s>', '').replace('.', '').replace('?', '')
-        a = x.strip()
-        # append the question, answer, and correct answer to the results list as a dictionary
-        results.append({'question': df['text'][i], 'answer': a, 'correct_answer': df['answer'][i]})
-        if a == df['answer'][i]:
-            score += 1
+        match = re.search(r"Answer: ([A-Z])", x)
+        if match:
+            a = match.group(1)
+            results.append({'question': df['text'][i], 'answer': a, 'correct_answer': df['answer'][i]})
+            if a == df['answer'][i]:
+                score += 1
+        else:
+            results.append({'question': df['text'][i], 'answer': x, 'correct_answer': df['answer'][i]})
+        
     
     print("Score: ", score/len(answers))
     # print(results)
@@ -102,13 +106,20 @@ def main(ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: fl
 
     # combine train, test, and validation data into one dataframe called sat
     sat = pd.concat([train, test, validation])
+    print("length",len(sat))
+
+    local_rank, world_size = setup_model_parallel()
+    if local_rank > 0:
+        sys.stdout = open(os.devnull, 'w')
+
+    generator = load(ckpt_dir, tokenizer_path, local_rank, world_size)
 
     # evaluate the model on the sat dataset
-    results = evaluate_sat(sat.head(10))
+    results = evaluate_sat(sat.head(20), generator)
 
-    for result in results:
-        print(result)
-        print("\n==================================\n")
+    # save the results to a json file
+    with open('results.json', 'w') as f:
+        json.dump(results, f)
 
 
 if __name__ == "__main__":
