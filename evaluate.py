@@ -54,21 +54,26 @@ def load(ckpt_dir: str, tokenizer_path: str, local_rank: int, world_size: int) -
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
     return generator
 
-def generate(prompts: list, generator, ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: float = 0.95):
+def generate(prompt: str, generator, temperature: float = 0.8, top_p: float = 0.95):
     g = generator
-    results = g.generate(prompts, max_gen_len=5, temperature=temperature, top_p=top_p)
+    results = g.generate(prompt, max_gen_len=5, temperature=temperature, top_p=top_p)
     return results
 
 def evaluate_sat(sat, g):
     df = sat
-    # answers = []
+    answers = []
     score = 0
     results = []
     q = ['Answer this question-'+str(i) for i in df['text']]
-    # print("duck")
-    # print(q)
-    answers = generate(q, g, '/home/ubuntu/llama/data/65B', '/home/ubuntu/llama/data/tokenizer.model', 0.2, 0.95)
-    # print(answers)
+    
+    # generate answers for the questions in the sat dataset in batches of 3 questions
+    for i in range(0, len(q), 3):
+        # skip questions 108 to 110
+        if i == 108:
+            continue
+        ans = generate(q[i:i+3], g, temperature=0.8, top_p=0.95)
+        print(ans)
+        answers.extend(ans)
     
     for i in range(len(answers)):
         x = answers[i].replace('<pad>', '').replace('</s>', '').replace('.', '').replace('?', '')
@@ -76,12 +81,13 @@ def evaluate_sat(sat, g):
         if match:
             a = match.group(1)
             results.append({'question': df['text'][i], 'answer': a, 'correct_answer': df['answer'][i]})
-            if a == df['answer'][i]:
-                score += 1
-        else:
-            results.append({'question': df['text'][i], 'answer': x, 'correct_answer': df['answer'][i]})
-        
-    
+            try:
+                if a == df['answer'][i]:
+                    score += 1
+            except:
+                print("error at ", i)
+                pass
+
     print("Score: ", score/len(answers))
     # print(results)
     return results
@@ -105,7 +111,7 @@ def main(ckpt_dir: str, tokenizer_path: str, temperature: float = 0.8, top_p: fl
     validation = pd.read_parquet('sat/validation-00000-of-00001-6242383510343be0.parquet')
 
     # combine train, test, and validation data into one dataframe called sat
-    sat = pd.concat([train, test, validation])
+    sat = pd.concat([train, test, validation], ignore_index=True)
     print("length",len(sat))
 
     local_rank, world_size = setup_model_parallel()
