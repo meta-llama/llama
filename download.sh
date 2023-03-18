@@ -16,9 +16,19 @@ N_SHARD_DICT["13B"]="1"
 N_SHARD_DICT["30B"]="3"
 N_SHARD_DICT["65B"]="7"
 
+# Check if wget or curl is available
+if command -v wget >/dev/null; then
+    DOWNLOAD_CMD="wget"
+elif command -v curl >/dev/null; then
+    DOWNLOAD_CMD="curl -O"
+else
+    echo "Neither wget nor curl is available on this system. Please install one of them and try again."
+    exit 1
+fi
+
 echo "Downloading tokenizer"
-curl -f ${PRESIGNED_URL/'*'/"tokenizer.model"} -o ${TARGET_FOLDER}"/tokenizer.model"
-curl -f ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -o ${TARGET_FOLDER}"/tokenizer_checklist.chk"
+$DOWNLOAD_CMD ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
+$DOWNLOAD_CMD ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
 
 (cd ${TARGET_FOLDER} && md5sum -c tokenizer_checklist.chk)
 
@@ -28,10 +38,10 @@ do
     mkdir -p ${TARGET_FOLDER}"/${i}"
     for s in $(seq -f "0%g" 0 ${N_SHARD_DICT[$i]})
     do
-        curl -f ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -o ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
+        $DOWNLOAD_CMD ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
     done
-    curl -f ${PRESIGNED_URL/'*'/"${i}/params.json"} -o ${TARGET_FOLDER}"/${i}/params.json"
-    curl -f ${PRESIGNED_URL/'*'/"${i}/checklist.chk"} -o ${TARGET_FOLDER}"/${i}/checklist.chk"
+    $DOWNLOAD_CMD ${PRESIGNED_URL/'*'/"${i}/params.json"} -O ${TARGET_FOLDER}"/${i}/params.json"
+    $DOWNLOAD_CMD ${PRESIGNED_URL/'*'/"${i}/checklist.chk"} -O ${TARGET_FOLDER}"/${i}/checklist.chk"
     echo "Checking checksums"
     (cd ${TARGET_FOLDER}"/${i}" && md5sum -c checklist.chk)
 done
