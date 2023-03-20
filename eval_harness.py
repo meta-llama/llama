@@ -13,6 +13,7 @@ def main(
     ckpt_dir: str,
     tokenizer_path: str,
     task_list: list = None,
+    num_fewshot: int = 0,
     temperature: float = 0.8,
     top_p: float = 0.95,
     max_seq_len: int = 512,
@@ -39,7 +40,7 @@ def main(
     if not task_list:
         task_list = tasks.ALL_TASKS
     task_dict = tasks.get_task_dict(task_list)
-    results = evaluator.evaluate(adaptor, task_dict)
+    results = evaluator.evaluate(adaptor, task_dict, num_fewshot=num_fewshot)
     print(results)
 
 
