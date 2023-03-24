@@ -59,4 +59,4 @@ LLaMA: Open and Efficient Foundation Language Models -- https://arxiv.org/abs/23
 See [MODEL_CARD.md](MODEL_CARD.md)
 
 ## License
-See the [LICENSE](LICENSE) file.
+See the [LICENSE](LICENSE) file for information regarding the licensing of this repository. The weights on the LLaMA model are available upon request to researchers under a different license, which you can find in the [LICENSE_WEIGHTS](LICENSE_WEIGHTS) file.
