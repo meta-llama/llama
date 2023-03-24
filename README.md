@@ -18,6 +18,17 @@ Taking the smallest model as an example, you need to place the model related fil
 ```bash
 .
 └── models
+    ├── 65B
+    │   ├── checklist.chk
+    │   ├── consolidated.00.pth
+    │   ├── consolidated.01.pth
+    │   ├── consolidated.02.pth
+    │   ├── consolidated.03.pth
+    │   ├── consolidated.04.pth
+    │   ├── consolidated.05.pth
+    │   ├── consolidated.06.pth
+    │   ├── consolidated.07.pth
+    │   └── params.json
     ├── 30B
     │   ├── consolidated.00.pth
     │   ├── consolidated.01.pth
@@ -54,6 +65,14 @@ If you wish to use a model with **the minimum memory** requirements, build the d
 docker build -t soulteary/llama:int8 . -f docker/Dockerfile.int8
 ```
 
+If you wish to **fine-tune** a model(7B-65B) with **the minimum memory** requirements, build the docker image with the following command:
+
+```bash
+# single GPU
+docker build -t soulteary/llama:alpaca-lora-finetune . -f docker/Dockerfile.lora-finetune
+# multiple GPU
+docker build -t soulteary/llama:alpaca-lora-65b-finetune . -f docker/Dockerfile.lora-65b-finetune
+```
 
 ### Play with the LLaMA
 
@@ -75,6 +94,8 @@ For **the minimum memory** requirements (7B almost 7.12GB) docker images, use th
 docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/app/models -p 7860:7860 -it --rm soulteary/llama:int8
 ```
 
+For fine-tune, [read the documentation](https://soulteary.com/2023/03/25/model-finetuning-on-llama-65b-large-model-using-docker-and-alpaca-lora.html).
+
 
 ## Credits
 
@@ -82,6 +103,7 @@ docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/app/models
 - [andrewssobral's pr](https://github.com/facebookresearch/llama/pull/126/files)
 - [juncongmoo/pyllama](https://github.com/juncongmoo/pyllama)
 - [tloen/llama-int8](https://github.com/tloen/llama-int8)
+- [tloen/alpaca-lora](https://github.com/tloen/alpaca-lora)
 
 ## License
 
