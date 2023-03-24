@@ -1,0 +1,14 @@
+FROM nvcr.io/nvidia/pytorch:22.12-py3
+LABEL org.opencontainers.image.authors="soulteary@gmail.com"
+
+WORKDIR /app
+
+RUN git clone https://github.com/tloen/alpaca-lora.git
+
+WORKDIR /app/alpaca-lora
+
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install datasets loralib sentencepiece git+https://github.com/huggingface/transformers.git bitsandbytes git+https://github.com/huggingface/peft.git
+
+# Patch for 1-click fine-tune
+COPY lora/patches/muti-card.py finetune.py
