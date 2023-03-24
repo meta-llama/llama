@@ -9,3 +9,6 @@ WORKDIR /app/alpaca-lora
 
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install datasets loralib sentencepiece git+https://github.com/huggingface/transformers.git bitsandbytes git+https://github.com/huggingface/peft.git
+
+# Patch for 1-click fine-tune
+COPY lora/patches/single.py finetune.py
