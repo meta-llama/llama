@@ -1,6 +1,8 @@
 # LLaMA Docker Playground
 
-![](./assets/llama.jpg)
+<img src="./assets/llama.jpg" width="50%" >
+
+[中文教程](./assets/guide-zh.md)
 
 A "Clean and Hygienic" LLaMA Playground, Play LLaMA with 7GB (int8) 10GB (pyllama) or 20GB (official) of VRAM.
 
