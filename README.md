@@ -1,14 +1,18 @@
 # LLaMA Docker Playground
 
+![](./assets/llama.jpg)
+
 A "Clean and Hygienic" LLaMA Playground, Play LLaMA with 7GB (int8) 10GB (pyllama) or 20GB (official) of VRAM.
+
+At the same time, it provides Alpaca LoRA one-click running Docker image, which can finetune 7B / 65B models.
 
 ## How to use
 
 To use this project, we need to do **two things**:
 
-- the first thing is to download the model
+1. the first thing is to download the model
   - (you can download the LLaMA models from anywhere)
-- and the second thing is to build the image with the docker
+2. and the second thing is to build the image with the docker
   - (saves time compared to downloading from Docker Hub)
 
 ### Put the Models File in Right Place
@@ -94,7 +98,7 @@ For **the minimum memory** requirements (7B almost 7.12GB) docker images, use th
 docker run --gpus all --ipc=host --ulimit memlock=-1 -v `pwd`/models:/app/models -p 7860:7860 -it --rm soulteary/llama:int8
 ```
 
-For fine-tune, [read the documentation](https://soulteary.com/2023/03/25/model-finetuning-on-llama-65b-large-model-using-docker-and-alpaca-lora.html).
+**For fine-tune**, [read this documentation](https://soulteary.com/2023/03/25/model-finetuning-on-llama-65b-large-model-using-docker-and-alpaca-lora.html).
 
 
 ## Credits
