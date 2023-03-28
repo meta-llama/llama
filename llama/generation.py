@@ -20,11 +20,15 @@ class LLaMA:
         max_gen_len: int,
         temperature: float = 0.8,
         top_p: float = 0.95,
+        p_noise: float = 0.0,
+        noise_word: str = "cantaloupe",
     ) -> List[str]:
         bsz = len(prompts)
         params = self.model.params
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
 
+        noise_token = self.tokenizer.encode(noise_word)
+        noise_replacements = []
         prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
 
         min_prompt_size = min([len(t) for t in prompt_tokens])
@@ -46,6 +50,15 @@ class LLaMA:
             else:
                 next_token = torch.argmax(logits, dim=-1)
             next_token = next_token.reshape(-1)
+
+            # support perturbing the autoregressive state mid-inference by
+            # replacing the next generated token with a noise token with
+            # probability p_noise and save the locations where we did this
+            # along with the generated tokens we discarded
+            if p_noise != 0.0 and torch.rand(1)[0] <= p_noise:
+                noise_replacements.append((cur_pos, next_token))
+                next_token = noise_token
+
             # only replace token if prompt has already been generated
             next_token = torch.where(
                 input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
@@ -63,6 +76,8 @@ class LLaMA:
             except ValueError:
                 pass
             decoded.append(self.tokenizer.decode(t))
+        if p_noise != 0.0:
+            return decoded, noise_replacements
         return decoded
 
 
