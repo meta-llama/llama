@@ -17,6 +17,7 @@ from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 
 
 def setup_model_parallel() -> Tuple[int, int]:
+    rank = int(os.environ.get("RANK", -1))
     local_rank = int(os.environ.get("LOCAL_RANK", -1))
     world_size = int(os.environ.get("WORLD_SIZE", -1))
 
@@ -26,7 +27,7 @@ def setup_model_parallel() -> Tuple[int, int]:
 
     # seed must be the same in all processes
     torch.manual_seed(1)
-    return local_rank, world_size
+    return rank, world_size
 
 
 def load(
