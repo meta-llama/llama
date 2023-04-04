@@ -25,6 +25,10 @@ The provided `example.py` can be run on a single or multi-gpu node with `torchru
 ```
 torchrun --nproc_per_node MP example.py --ckpt_dir $TARGET_FOLDER/model_size --tokenizer_path $TARGET_FOLDER/tokenizer.model
 ```
+If using CPU,
+```
+torchrun --nproc_per_node MP example.py --use_cpu true --ckpt_dir $TARGET_FOLDER/model_size --tokenizer_path $TARGET_FOLDER/tokenizer.model
+```
 
 Different models require different MP values:
 

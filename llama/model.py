@@ -28,6 +28,7 @@ class ModelArgs:
 
     max_batch_size: int = 32
     max_seq_len: int = 2048
+    use_cpu: bool = False
 
 
 class RMSNorm(torch.nn.Module):
@@ -108,13 +109,21 @@ class Attention(nn.Module):
             input_is_parallel=True,
             init_method=lambda x: x,
         )
-
-        self.cache_k = torch.zeros(
-            (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
-        ).cuda()
-        self.cache_v = torch.zeros(
-            (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
-        ).cuda()
+        
+        if not args.use_cpu:
+            self.cache_k = torch.zeros(
+                (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
+            ).cuda()
+            self.cache_v = torch.zeros(
+                (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
+            ).cuda()
+        else:
+            self.cache_k = torch.zeros(
+                (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
+            )
+            self.cache_v = torch.zeros(
+                (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
+            )
 
     def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
         bsz, seqlen, _ = x.shape

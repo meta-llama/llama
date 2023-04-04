@@ -20,6 +20,7 @@ class LLaMA:
         max_gen_len: int,
         temperature: float = 0.8,
         top_p: float = 0.95,
+        use_cpu: bool = False,
     ) -> List[str]:
         bsz = len(prompts)
         params = self.model.params
@@ -31,14 +32,17 @@ class LLaMA:
         max_prompt_size = max([len(t) for t in prompt_tokens])
 
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_size)
-
-        tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).cuda().long()
+        if use_cpu:
+            tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).long()
+        else:
+            tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).cuda().long()
         for k, t in enumerate(prompt_tokens):
             tokens[k, : len(t)] = torch.tensor(t).long()
         input_text_mask = tokens != self.tokenizer.pad_id
         start_pos = min_prompt_size
         prev_pos = 0
         for cur_pos in range(start_pos, total_len):
+            print(f'Generate Process:{round((cur_pos/total_len)*100,2)}%')
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
             if temperature > 0:
                 probs = torch.softmax(logits / temperature, dim=-1)
