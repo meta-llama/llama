@@ -17,8 +17,8 @@ mkdir -p "${TARGET_FOLDER}"
 CHK_FILE="tokenizer_checklist.chk"
 [ -f "${TARGET_FOLDER}/${CHK_FILE}" ] && MD5SUM_RESULT=$(cd "${TARGET_FOLDER}" && md5sum -c "${CHK_FILE}")
 if [ $? -ne 0 ]; then
-    wget ${PRESIGNED_URL/'*'/"${CHK_FILE}"} -O "${TARGET_FOLDER}/${CHK_FILE}"
-    wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
+    wget --no-check-certificate ${PRESIGNED_URL/'*'/"${CHK_FILE}"} -O "${TARGET_FOLDER}/${CHK_FILE}"
+    wget --no-check-certificate ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
     (cd "${TARGET_FOLDER}" && md5sum -c "${CHK_FILE}")
     [ $? -ne 0 ] && exit 1
 fi
@@ -30,17 +30,20 @@ for i in ${MODEL_SIZE//,/ }; do
     mkdir -p "${TARGET_FOLDER}/${i}"    
     echo "If you tried to download it before, please, wait while we check the integrity of already downloaded weights..."
     [ -f "${TARGET_FOLDER}/${i}/${CHK_FILE}" ] && MD5SUM_RESULT=$(cd "${TARGET_FOLDER}/${i}" && md5sum -c "${CHK_FILE}")
-    if [ $? -ne 0 ]; then
-        wget ${PRESIGNED_URL/'*'/"${i}/${CHK_FILE}"} -O ${TARGET_FOLDER}"/${i}/${CHK_FILE}"
-        wget ${PRESIGNED_URL/'*'/"${i}/params.json"} -O ${TARGET_FOLDER}"/${i}/params.json"
-
+    if [ $? -eq 0 ]; then
+        echo -e $MD5SUM_RESULT | sed 's/: /=/g'
+    else
+        wget --no-check-certificate ${PRESIGNED_URL/'*'/"${i}/${CHK_FILE}"} -O ${TARGET_FOLDER}"/${i}/${CHK_FILE}"
+        wget --no-check-certificate ${PRESIGNED_URL/'*'/"${i}/params.json"} -O ${TARGET_FOLDER}"/${i}/params.json"
         for s in $(seq -f "0%g" 0 ${N_SHARD_DICT[$i]}); do
             DOWNLOADED=$(echo $MD5SUM_RESULT | sed 's/: /=/g' | grep "consolidated.${s}.pth=OK")
-            [ -z "${DOWNLOADED}" ] && wget ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
+            if [ "${DOWNLOADED}" ]; then 
+                echo "${TARGET_FOLDER}/${i}/consolidated.${s}.pth=OK"
+            else
+                wget --no-check-certificate ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
+            fi
         done
         echo "Checking checksums"
         (cd "${TARGET_FOLDER}/${i}" && md5sum -c "${CHK_FILE}")
-    else
-        echo -e $MD5SUM_RESULT | sed 's/: /=/g'
     fi
 done
