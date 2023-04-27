@@ -26,8 +26,7 @@ MODEL_SIZE="7B,13B,30B,65B" TARGET_FOLDER="model-weights" ./download.sh "URL_FRO
 ```
 If you wish, you can edit the `download.sh` script with the signed url provided in the email to download the model weights and tokenizer.
 
-Keep in mind that if you tried to download before and got error, the script will try to validate the donwnloaded weithgs and download only the missing/failed ones.
-The check could take some time based in your CPU power.
+Please keep in mind that if you tried to download before and got an error, the script will try to validate the donwnloaded weithgs and download only the missing/failed ones. This check could take time because it depends on your CPU processing power.
 
 ## Inference
 
