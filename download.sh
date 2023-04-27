@@ -22,7 +22,7 @@ if [ $? -ne 0 ]; then
     (cd "${TARGET_FOLDER}" && md5sum -c "${CHK_FILE}")
     [ $? -ne 0 ] && exit 1
 fi
-echo $MD5SUM_RESULT
+echo $MD5SUM_RESULT | sed 's/: /=/g'
 
 CHK_FILE="checklist.chk"
 for i in ${MODEL_SIZE//,/ }; do
@@ -33,13 +33,14 @@ for i in ${MODEL_SIZE//,/ }; do
     if [ $? -ne 0 ]; then
         wget ${PRESIGNED_URL/'*'/"${i}/${CHK_FILE}"} -O ${TARGET_FOLDER}"/${i}/${CHK_FILE}"
         wget ${PRESIGNED_URL/'*'/"${i}/params.json"} -O ${TARGET_FOLDER}"/${i}/params.json"
+
         for s in $(seq -f "0%g" 0 ${N_SHARD_DICT[$i]}); do
-            DOWNLOADED=$(echo $MD5SUM_RESULT | grep -e consolidated.${s}.pth -e OK)
-            [ -z $DOWNLOADED ] && wget ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
+            DOWNLOADED=$(echo $MD5SUM_RESULT | sed 's/: /=/g' | grep "consolidated.${s}.pth=OK")
+            [ -z "${DOWNLOADED}" ] && wget ${PRESIGNED_URL/'*'/"${i}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${i}/consolidated.${s}.pth"
         done
         echo "Checking checksums"
         (cd "${TARGET_FOLDER}/${i}" && md5sum -c "${CHK_FILE}")
     else
-        echo -e $MD5SUM_RESULT
+        echo -e $MD5SUM_RESULT | sed 's/: /=/g'
     fi
 done
