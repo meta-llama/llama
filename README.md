@@ -17,7 +17,17 @@ pip install -e .
 ## Download
 
 Once your request is approved, you will receive links to download the tokenizer and model files.
-Edit the `download.sh` script with the signed url provided in the email to download the model weights and tokenizer.
+```bash
+./download.sh URL_FROM_EMAIL
+```
+If you specify nothing, those will be the default values:
+```bash
+MODEL_SIZE="7B,13B,30B,65B" TARGET_FOLDER="model-weights" ./download.sh URL_FROM_EMAIL
+```
+If you wish, you can edit the `download.sh` script with the signed url provided in the email to download the model weights and tokenizer.
+
+Keep in mind that if you tried to download before and got error, the script will try to validate the donwnloaded weithgs and download only the missing/failed ones.
+The check could take some time based in your CPU power.
 
 ## Inference
 
