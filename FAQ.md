@@ -1,7 +1,7 @@
 # FAQ
 ## <a name="1"></a>1. The download.sh script doesn't work on default bash in MacOS X:
 
-Please see answers from theses issues:
+Please see answers from these issues:
  - https://github.com/facebookresearch/llama/issues/41#issuecomment-1451290160
  - https://github.com/facebookresearch/llama/issues/53#issue-1606582963
 
@@ -37,7 +37,7 @@ We've added command line options to `example.py` and changed the default `max_se
 Feel free to lower these settings according to your hardware.
 
 ## <a name="4"></a>4. Other languages
-The model was trained primarily on English, but also on a few other languages with Latin or Cyrillic alphabets.
+The model was trained primarily in English, but also in a few other languages with Latin or Cyrillic alphabets.
 
 For instance, LLaMA was trained on Wikipedia for the 20 following languages: bg, ca, cs, da, de, en, es, fr, hr, hu, it, nl, pl, pt, ro, ru, sl, sr, sv, uk.
 
