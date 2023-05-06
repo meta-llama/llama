@@ -23,7 +23,7 @@ https://research.facebook.com/publications/llama-open-and-efficient-foundation-l
 Non-commercial bespoke license
 
 **Where to send questions or comments about the model**
-Questions and comments about LLaMA can be sent via the [GitHub repository](https://github.com/facebookresearch/llama) of the project , by opening an issue.
+Questions and comments about LLaMA can be sent via the [GitHub repository](https://github.com/facebookresearch/llama) of the project, by opening an issue.
 
 ## Intended use
 **Primary intended uses**
@@ -40,10 +40,10 @@ LLaMA is a base, or foundational, model. As such, it should not be used on downs
 
 ## Factors
 **Relevant factors**
-One of the most relevant factors for which model performance may vary is which language is used. Although we included 20 languages in the training data, most of our dataset is made of English text, and we thus expect the model to perform better for English than other languages. Relatedly, it has been shown in previous studies that performance might vary for different dialects, and we expect that it will be the case for our model.
+One of the most relevant factors for which model performance may vary in which language is used. Although we included 20 languages in the training data, most of our dataset is made of English text, and we thus expect the model to perform better in English than other languages. Relatedly, it has been shown in previous studies that performance might vary for different dialects, and we expect that it will be the case for our model.
 
 **Evaluation factors**
-As our model is trained on data from the Web, we expect that it reflects biases from this source. We thus evaluated on RAI datasets to measure biases exhibited by the model for gender, religion, race, sexual orientation, age, nationality, disability, physical appearance and socio-economic status. We also measure the toxicity of model generations, depending on the toxicity of the context used to prompt the model.
+As our model is trained on data from the Web, we expect that it reflects biases from this source. We thus evaluated RAI datasets to measure biases exhibited by the model for gender, religion, race, sexual orientation, age, nationality, disability, physical appearance and socio-economic status. We also measure the toxicity of model generations, depending on the toxicity of the context used to prompt the model.
 
 ## Metrics
 **Model performance measures**
