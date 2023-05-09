@@ -16,6 +16,10 @@ from fairscale.nn.model_parallel.layers import (
     ColumnParallelLinear,
 )
 
+try:
+    from flash_attn.flash_attn_interface import flash_attn_unpadded_func
+except ImportError:
+    flash_attn_unpadded_func = None
 
 @dataclass
 class ModelArgs:
@@ -116,6 +120,44 @@ class Attention(nn.Module):
             (args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim)
         ).cuda()
 
+    def _attention(self, xq, keys, values, mask=None):
+        bsz, seqlen = xq.shape[0], xq.shape[1]
+
+        xq = xq.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
+        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
+        if mask is not None:
+            scores = scores + mask  # (bs, n_local_heads, slen, cache_len + slen)
+        scores = F.softmax(scores.float(), dim=-1).type_as(xq)
+        output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
+        output = output.transpose(
+            1, 2
+        ).contiguous().view(bsz, seqlen, -1)
+
+        return output
+
+    def _flash_attention(self, xq, keys, values, mask=None):
+        bsz, seqlen = xq.shape[0], xq.shape[1]
+        k_bsz, k_seqlen = keys.shape[0], keys.shape[1]
+
+        cu_seqlens = torch.arange(0, (bsz+ 1) * seqlen, step=seqlen, dtype=torch.int32,
+                                  device=xq.device)
+        k_cu_seqlens = torch.arange(0, (k_bsz+ 1) * k_seqlen, step=k_seqlen, dtype=torch.int32,
+                                  device=xq.device)
+        scale = 1.0 / math.sqrt(self.head_dim)
+        q = torch.reshape(xq, (xq.shape[0] * xq.shape[1], xq.shape[2], xq.shape[3]))
+        k = torch.reshape(keys, (keys.shape[0] * keys.shape[1], keys.shape[2], keys.shape[3]))
+        v = torch.reshape(values, (values.shape[0] * values.shape[1], values.shape[2], values.shape[3]))
+        output = flash_attn_unpadded_func(
+            q, k, v, cu_seqlens, k_cu_seqlens, seqlen, k_seqlen,
+            0.0,
+            softmax_scale=scale, causal=mask is not None,
+        )
+        output = torch.reshape(output, (bsz, seqlen, -1))
+
+        return output
+
     def forward(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
         bsz, seqlen, _ = x.shape
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
@@ -135,17 +177,10 @@ class Attention(nn.Module):
         keys = self.cache_k[:bsz, : start_pos + seqlen]
         values = self.cache_v[:bsz, : start_pos + seqlen]
 
-        xq = xq.transpose(1, 2)
-        keys = keys.transpose(1, 2)
-        values = values.transpose(1, 2)
-        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
-        if mask is not None:
-            scores = scores + mask  # (bs, n_local_heads, slen, cache_len + slen)
-        scores = F.softmax(scores.float(), dim=-1).type_as(xq)
-        output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
-        output = output.transpose(
-            1, 2
-        ).contiguous().view(bsz, seqlen, -1)
+        if flash_attn_unpadded_func:
+            output = self._flash_attention(xq, keys, values, mask)
+        else:
+            output = self._attention(xq, keys, values, mask)
 
         return self.wo(output)
 
