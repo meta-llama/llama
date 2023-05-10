@@ -129,8 +129,12 @@ class Attention(nn.Module):
         self.cache_k = self.cache_k.to(xq)
         self.cache_v = self.cache_v.to(xq)
 
-        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
-        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
+        with torch.no_grad():
+            # Modiying cache without no_grad causes the autograd engine to track
+            # the updates and leads to "RuntimeError: Trying to backward through
+            # the graph a second time"
+            self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
+            self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
 
         keys = self.cache_k[:bsz, : start_pos + seqlen]
         values = self.cache_v[:bsz, : start_pos + seqlen]
