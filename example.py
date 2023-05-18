@@ -16,13 +16,17 @@ from fairscale.nn.model_parallel.initialize import initialize_model_parallel
 from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 
 
-def setup_model_parallel() -> Tuple[int, int]:
+def setup_model_parallel(backend: str) -> Tuple[int, int]:
     local_rank = int(os.environ.get("LOCAL_RANK", -1))
     world_size = int(os.environ.get("WORLD_SIZE", -1))
 
-    torch.distributed.init_process_group("nccl")
-    initialize_model_parallel(world_size)
-    torch.cuda.set_device(local_rank)
+    if backend == 'cuda':
+        torch.distributed.init_process_group("nccl")
+        initialize_model_parallel(world_size)
+        torch.cuda.set_device(local_rank)
+    else:
+        torch.distributed.init_process_group("gloo")
+        initialize_model_parallel(world_size)
 
     # seed must be the same in all processes
     torch.manual_seed(1)
@@ -36,7 +40,8 @@ def load(
     world_size: int,
     max_seq_len: int,
     max_batch_size: int,
-) -> LLaMA:
+    backend: str,
+) -> Tuple[LLaMA, object]:
     start_time = time.time()
     checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
     assert world_size == len(
@@ -53,8 +58,21 @@ def load(
     )
     tokenizer = Tokenizer(model_path=tokenizer_path)
     model_args.vocab_size = tokenizer.n_words
-    torch.set_default_tensor_type(torch.cuda.HalfTensor)
-    model = Transformer(model_args)
+    device = backend
+    if backend == 'cuda':
+        torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    elif backend == 'directml':
+        import torch_directml
+        torch.set_default_tensor_type(torch_directml.torch.HalfTensor)
+        device = torch_directml.device()
+    elif backend == 'cpu':
+        # TODO: some operations such as "addmm_impl_cpu_" are not implemented for 'Half' at present
+        # torch.set_default_tensor_type(torch.HalfTensor)
+        pass
+    else:
+        pass
+
+    model = Transformer(model_args, device=device)
     torch.set_default_tensor_type(torch.FloatTensor)
     model.load_state_dict(checkpoint, strict=False)
 
@@ -70,13 +88,14 @@ def main(
     top_p: float = 0.95,
     max_seq_len: int = 512,
     max_batch_size: int = 32,
+    backend: str = 'cuda',
 ):
     local_rank, world_size = setup_model_parallel()
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
 
-    generator = load(
-        ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size
+    generator, device = load(
+        ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size, backend
     )
 
     prompts = [
