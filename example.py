@@ -78,7 +78,7 @@ def load(
 
     generator = LLaMA(model, tokenizer)
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
-    return generator
+    return generator, device
 
 
 def main(
@@ -90,7 +90,7 @@ def main(
     max_batch_size: int = 32,
     backend: str = 'cuda',
 ):
-    local_rank, world_size = setup_model_parallel()
+    local_rank, world_size = setup_model_parallel(backend)
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
 
