@@ -3,7 +3,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 import fairscale.nn.model_parallel.initialize as fs_init
 import torch
