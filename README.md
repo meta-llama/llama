@@ -24,6 +24,11 @@ Keep in mind that the links expire after 24 hours and a certain amount of downlo
 
 We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta AI website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
 
+You can also access Chat-WebUI for 7b, 13b, and 70b Llama 2 models on Huggingface Spaces here-
+- [Llama2 7B Chat model demo](https://huggingface.co/spaces/huggingface-projects/llama-2-7b-chat)
+- [Llama2 13B Chat model demo](https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat)
+- [Llama2 70B Chat model demo](https://huggingface.co/spaces/ysharma/Explore_llamav2_with_TGI)
+
 ## Setup
 
 In a conda env with PyTorch / CUDA available, clone the repo and run in the top-level directory:
