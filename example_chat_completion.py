@@ -11,6 +11,7 @@ from llama import Llama
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
+    backend: str = 'cuda',
     temperature: float = 0.6,
     top_p: float = 0.9,
     max_seq_len: int = 512,
@@ -21,6 +22,7 @@ def main(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
+        backend=backend,
         max_batch_size=max_batch_size,
     )
 
