@@ -4,7 +4,7 @@
 import fire
 
 from llama import Llama
-
+from typing import List
 
 def main(
     ckpt_dir: str,
@@ -22,7 +22,7 @@ def main(
         max_batch_size=max_batch_size,
     )
 
-    prompts = [
+    prompts: List[str] = [
         # For these prompts, the expected answer is the natural continuation of the prompt
         "I believe the meaning of life is",
         "Simply put, the theory of relativity states that ",
