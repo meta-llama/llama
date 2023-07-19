@@ -14,12 +14,28 @@ if [[ $MODEL_SIZE == "" ]]; then
 fi
 
 echo "Downloading LICENSE and Acceptable Usage Policy"
-wget ${PRESIGNED_URL/'*'/"LICENSE"} -O ${TARGET_FOLDER}"/LICENSE"
-wget ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_POLICY.md"
+if ! wget ${PRESIGNED_URL/'*'/"LICENSE"} -O ${TARGET_FOLDER}"/LICENSE"; then
+    echo "Error downloading LICENSE file. Exiting."
+    exit 1
+fi
 
+if ! wget ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_POLICY.md"; then
+    echo "Error downloading USE_POLICY.md file. Exiting."
+    exit 1
+fi
+
+# Add error handling for the tokenizer download
 echo "Downloading tokenizer"
-wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
-wget ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
+if ! wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"; then
+    echo "Error downloading tokenizer.model. Exiting."
+    exit 1
+fi
+
+if ! wget ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"; then
+    echo "Error downloading tokenizer_checklist.chk. Exiting."
+    exit 1
+fi
+
 (cd ${TARGET_FOLDER} && md5sum -c tokenizer_checklist.chk)
 
 for m in ${MODEL_SIZE//,/ }
@@ -49,12 +65,21 @@ do
 
     for s in $(seq -f "0%g" 0 ${SHARD})
     do
-        wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${s}.pth"
+        if ! wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${s}.pth"; then
+            echo "Error downloading ${MODEL_PATH}/consolidated.${s}.pth. Exiting."
+            exit 1
+        fi
     done
 
-    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
-    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
-    echo "Checking checksums"
+    if ! wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"; then
+        echo "Error downloading ${MODEL_PATH}/params.json. Exiting."
+        exit 1
+    fi
+
+    if ! wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"; then
+        echo "Error downloading ${MODEL_PATH}/checklist.chk. Exiting."
+        exit 1
+    fi
+
     (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
 done
-
