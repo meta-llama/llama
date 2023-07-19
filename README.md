@@ -14,9 +14,9 @@ This repository is intended as a minimal example to load [Llama 2](https://ai.me
 
 In order to download the model weights and tokenizer, please visit the [Meta AI website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and accept our License.
 
-Once your request is approved, you will receive a signed URL over email. Then run the download.sh script, passing the URL provided when prompted to start the download. Make sure that you copy the URL text itself, **do not use the 'Copy link address' option** when you right click the URL. If the copied URL text starts with: https://download.llamameta.net, you copied it correctly. If the copied URL text starts with: https://l.facebook.com, you copied it the wrong way.
+Once your request is approved, you will receive a signed URL over email. Then run the download.sh or the download.py script, passing the URL provided when prompted to start the download. Make sure that you copy the URL text itself, **do not use the 'Copy link address' option** when you right click the URL. If the copied URL text starts with: https://download.llamameta.net, you copied it correctly. If the copied URL text starts with: https://l.facebook.com, you copied it the wrong way.
 
-Pre-requisites: make sure you have `wget` and `md5sum` installed. Then to run the script: `./download.sh`.
+Pre-requisites for download.sh: make sure you have `wget` and `md5sum` installed. Then to run the script: `./download.sh`.
 
 Keep in mind that the links expire after 24 hours and a certain amount of downloads. If you start seeing errors such as `403: Forbidden`, you can always re-request a link.
 
