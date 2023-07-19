@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-# Copyright (c) SoftwareAgent.ai by Adnan Boz.
+
+"""
+Filename: download.py
+Author: Adnan Boz (adnanboz)
+Date: July 19, 2023
+Description: python translation of the download.sh script for Meta llama 2
+"""
 
 import os
 import urllib.request
