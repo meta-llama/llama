@@ -70,7 +70,7 @@ foreach ($m in $MODEL_SIZE.Split(',')) {
         Invoke-WebRequest -UserAgent "Wget/1.13.4" -Uri $url -OutFile "${TARGET_FOLDER}/${MODEL_PATH}/consolidated.0${s}.pth"
     }
     $url=($PRESIGNED_URL -replace '\*', "${MODEL_PATH}/params.json") 
-    Invoke-WebRequest -UserAgent "Wget/1.13.4" -Uri $url -OutFile "${TARGET_FOLDER}/${MODEL_PATH}/params.jsoni"
+    Invoke-WebRequest -UserAgent "Wget/1.13.4" -Uri $url -OutFile "${TARGET_FOLDER}/${MODEL_PATH}/params.json"
     $url=($PRESIGNED_URL -replace '\*', "${MODEL_PATH}/checklist.chk")
     Invoke-WebRequest -UserAgent "Wget/1.13.4" -Uri $url -OutFile "${TARGET_FOLDER}/${MODEL_PATH}/checklist.chk"
     Write-Host "Checking checksums"
