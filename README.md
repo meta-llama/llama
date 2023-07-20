@@ -20,6 +20,9 @@ Pre-requisites: make sure you have `wget` and `md5sum` installed. Then to run th
 
 Keep in mind that the links expire after 24 hours and a certain amount of downloads. If you start seeing errors such as `403: Forbidden`, you can always re-request a link.
 
+### Alternative Download
+Alternatively the models can be downloaded via the following magnet link: [Magnet](magnet:?xt=urn:btih:c92ce1f23be49e2f93c5ca026163dd4e28dd26ae&dn=LLaMa2&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce)
+
 ### Access on Hugging Face
 
 We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta AI website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
