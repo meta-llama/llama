@@ -3,9 +3,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
-# Specify folder
-TARGET_FOLDER="."        
-TARGET_FOLDER="/Users/lukasecerovic/Documents/models/llama-2"        
+# Specify folder containing the models
+read -p "Enter the path to target folder: " TARGET_FOLDER
 
 MODEL_SIZE="7B,13B,70B,7B-chat,13B-chat,70B-chat"
 
