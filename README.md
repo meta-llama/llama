@@ -28,7 +28,7 @@ In a conda env with PyTorch / CUDA available, clone the repo and run in the top-
 pip install -e .
 ```
 
-It is also possible to test models without CUDA. For example, to run models on CPU, add an extra command line option `--device cpu` to following examples. Number of threads can be set using the environment variable `NUM_THREADS`.
+It is also possible to test models without CUDA. For example, to run models on CPU, add an extra command line option `--backend cpu` to following examples. Number of threads can be set using the environment variable `NUM_THREADS`.
 
 ## Inference
 
