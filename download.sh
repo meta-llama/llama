@@ -14,12 +14,12 @@ if [[ $MODEL_SIZE == "" ]]; then
 fi
 
 echo "Downloading LICENSE and Acceptable Usage Policy"
-wget ${PRESIGNED_URL/'*'/"LICENSE"} -O ${TARGET_FOLDER}"/LICENSE"
-wget ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_POLICY.md"
+wget ${PRESIGNED_URL/'*'/"LICENSE"} -c -O ${TARGET_FOLDER}"/LICENSE"
+wget ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -c -O ${TARGET_FOLDER}"/USE_POLICY.md"
 
 echo "Downloading tokenizer"
-wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
-wget ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
+wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -c -O ${TARGET_FOLDER}"/tokenizer.model"
+wget ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -c -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
 (cd ${TARGET_FOLDER} && md5sum -c tokenizer_checklist.chk)
 
 for m in ${MODEL_SIZE//,/ }
@@ -49,11 +49,11 @@ do
 
     for s in $(seq -f "0%g" 0 ${SHARD})
     do
-        wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${s}.pth"
+        wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${s}.pth"} -c -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${s}.pth"
     done
 
-    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
-    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
+    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -c -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
+    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -c -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
     echo "Checking checksums"
     (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
 done
