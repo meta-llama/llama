@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import List, Literal, Optional, Tuple, TypedDict
 
 import torch
+import torch_xla.core.xla_model as xm
+
 import torch.nn.functional as F
 from fairscale.nn.model_parallel.initialize import (
     get_model_parallel_rank,
@@ -44,7 +46,7 @@ Dialog = List[Message]
 B_INST, E_INST = "[INST]", "[/INST]"
 B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
 DEFAULT_SYSTEM_PROMPT = """\
-You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
 
 If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."""
 
@@ -102,38 +104,82 @@ class Llama:
     def __init__(self, model: Transformer, tokenizer: Tokenizer):
         self.model = model
         self.tokenizer = tokenizer
+        self._generate_one_token_fn = self._generate_one_token
+        self._generate_one_token_fn = torch.compile(self._generate_one_token_fn,
+                                                    backend="torchxla_trace_once", fullgraph=True)
 
-    @torch.inference_mode()
+
+    def _generate_one_token(self, tokens, input_tokens, input_text_mask, cur_pos_tensor, 
+                            input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p):
+        logits, cache_kvs = self.model(input_tokens, input_pos_tensor, output_pos_tensor, cache_kvs)
+        if temperature > 0:
+            probs = torch.softmax(logits[:, -1] / temperature, dim=-1) #TODO: eval the perf impact of logits vs. logits[:,-1]
+            next_token = sample_top_p(probs, top_p)
+        else:
+            next_token = torch.argmax(logits[:, -1], dim=-1)
+        next_token = next_token.reshape(-1)
+        # only replace token if prompt has already been generated
+        input_text_mask_tmp = input_text_mask.index_select(1, cur_pos_tensor).squeeze(dim=1)
+        tokens_tmp = tokens.index_select(1, cur_pos_tensor).squeeze(dim=1)
+        next_token = torch.where(
+            input_text_mask_tmp, tokens_tmp, next_token
+        )
+        next_token = next_token.unsqueeze(1)
+        tokens = tokens.index_copy(1, cur_pos_tensor, next_token)
+        input_pos_tensor = input_pos_tensor[-1:] + 1
+        cur_pos_tensor = cur_pos_tensor + 1
+        output_pos_tensor = cur_pos_tensor - 1
+        input_tokens = tokens.index_select(1, input_pos_tensor)
+
+        return tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvs
+
+    # @torch.inference_mode() #TORCH_XLA doesn't have this line
     def generate(
         self,
-        prompt_tokens: List[List[int]],
+        prompt_tokens: List[List[int]], #TODO: LIST OF LIST INSTEAD OF LIST
         max_gen_len: int,
         temperature: float = 0.6,
         top_p: float = 0.9,
-        logprobs: bool = False,
-        echo: bool = False,
-    ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
+        logprobs: bool = False,#NEW LINE
+        echo: bool = False,#NEW LINE
+    ) -> Tuple[List[List[int]], Optional[List[List[float]]]]: #NEW OUTPUT FORMAT
         params = self.model.params
         bsz = len(prompt_tokens)
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
 
+        # TODO: check if we need to optimize this block - llama1 has a simpler logic
         min_prompt_len = min(len(t) for t in prompt_tokens)
         max_prompt_len = max(len(t) for t in prompt_tokens)
         assert max_prompt_len <= params.max_seq_len
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_len)
 
         pad_id = self.tokenizer.pad_id
-        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long, device="cuda")
+        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long)
         for k, t in enumerate(prompt_tokens):
-            tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long, device="cuda")
-        if logprobs:
+            tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long)
+        if logprobs: #TODO: NEW CODE - optimize this block
             token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
 
-        prev_pos = 0
-        eos_reached = torch.tensor([False] * bsz, device="cuda")
+        device = xm.xla_device()
+        tokens = tokens.to(device)
+        token_logprobs.to(device)
+
+        start_pos = 1
+        cur_pos_tensor = torch.tensor(start_pos).to(device)
+        input_pos_tensor = torch.arange(0, start_pos).to(device)
+        output_pos_tensor = cur_pos_tensor - 1
+        input_tokens = tokens.index_select(1, input_pos_tensor)
+        cache_kvs = self.model.cache_kvs #TODO: revisit the cache implementation between the two models
+
+        prev_pos = 0 #TODO: drop this line
+        eos_reached = torch.tensor([False] * bsz, device=device)
         input_text_mask = tokens != pad_id
-        for cur_pos in range(min_prompt_len, total_len):
+        xm.mark_step(wait=True)
+
+        decoding_start_time = time.time()
+        for cur_pos in range(min_prompt_len, total_len): #TODO: drop dependency on cur_pos. min_prompt_len used to be start_pos
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            # TODO: NEW CODE BLOCK - OPTIMIZE
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
                     input=logits.transpose(1, 2),
@@ -141,33 +187,38 @@ class Llama:
                     reduction="none",
                     ignore_index=pad_id,
                 )
-            if temperature > 0:
-                probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
-                next_token = sample_top_p(probs, top_p)
-            else:
-                next_token = torch.argmax(logits[:, -1], dim=-1)
+            #####
 
-            next_token = next_token.reshape(-1)
-            # only replace token if prompt has already been generated
-            next_token = torch.where(
-                input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
-            )
-            tokens[:, cur_pos] = next_token
+            tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvs \
+                = self._generate_one_token_fn(
+                    tokens, input_tokens, input_text_mask, cur_pos_tensor,
+                    input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p
+                )
+            ###TODO: optimize this block of code
             eos_reached |= (~input_text_mask[:, cur_pos]) & (
                 next_token == self.tokenizer.eos_id
             )
             prev_pos = cur_pos
             if all(eos_reached):
+                xm.mark_step()
                 break
+            #####
+            xm.mark_step()
+        self.model.cache_kvs = cache_kvs
+        print(f"Decoded in {time.time() - decoding_start_time:.5f} seconds")
 
+        # TODO: NEW CODE BLOCK - OPTIMIZE
         if logprobs:
             token_logprobs = token_logprobs.tolist()
+
+        # TODO: this block is different from llama1; it's best to re-optimize it as needed. no decode() call here
         out_tokens, out_logprobs = [], []
         for i, toks in enumerate(tokens.tolist()):
+            if i >= len(prompt_tokens):  #TODO: brought in from llama1 optimization - necessary for training?
+                break
             # cut to max gen len
             start = 0 if echo else len(prompt_tokens[i])
             toks = toks[start : len(prompt_tokens[i]) + max_gen_len]
-            probs = None
             if logprobs:
                 probs = token_logprobs[i][start : len(prompt_tokens[i]) + max_gen_len]
             # cut to eos tok if any
@@ -297,7 +348,7 @@ def sample_top_p(probs, p):
     probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
     probs_sum = torch.cumsum(probs_sort, dim=-1)
     mask = probs_sum - probs_sort > p
-    probs_sort[mask] = 0.0
+    probs_sort = torch.where(mask, 0.0, probs_sort)
     probs_sort.div_(probs_sort.sum(dim=-1, keepdim=True))
     next_token = torch.multinomial(probs_sort, num_samples=1)
     next_token = torch.gather(probs_idx, -1, next_token)
