@@ -3,6 +3,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
+if ! which wget &>/dev/null; then
+    >&2 echo "Please install wget, which is required for the download."
+    exit 1
+fi
+
 read -p "Enter the URL from email: " PRESIGNED_URL
 echo ""
 read -p "Enter the list of models to download without spaces (7B,13B,70B,7B-chat,13B-chat,70B-chat), or press Enter for all: " MODEL_SIZE
