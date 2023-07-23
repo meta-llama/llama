@@ -1,5 +1,7 @@
 # LLaMA Docker Playground
 
+This project is compatible with LLaMA2, but you can visit the project below to experience various ways to talk to LLaMA2 **(private deployment)**: [soulteary/docker-llama2-chat](https://github.com/soulteary/docker-llama2-chat)
+
 <img src="./assets/llama.jpg" width="50%" >
 
 [中文教程](./assets/guide-zh.md)
