@@ -110,8 +110,18 @@ class Llama:
 
 
     def _generate_one_token(self, tokens, input_tokens, input_text_mask, cur_pos_tensor, 
-                            input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p):
+                            input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs):
         logits, cache_kvs = self.model(input_tokens, input_pos_tensor, output_pos_tensor, cache_kvs)
+        # TODO: NEW CODE BLOCK - OPTIMIZE
+        if logprobs:
+            token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
+                input=logits.transpose(1, 2),
+                target=tokens[:, prev_pos + 1 : cur_pos + 1],
+                reduction="none",
+                ignore_index=pad_id,
+            )
+        #####
+
         if temperature > 0:
             probs = torch.softmax(logits[:, -1] / temperature, dim=-1) #TODO: eval the perf impact of logits vs. logits[:,-1]
             next_token = sample_top_p(probs, top_p)
@@ -131,12 +141,18 @@ class Llama:
         output_pos_tensor = cur_pos_tensor - 1
         input_tokens = tokens.index_select(1, input_pos_tensor)
 
-        return tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvs
+        #TODO: optimize and bring back
+        eos_reached = False
+        #eos_reached |= (~input_text_mask[:, cur_pos]) & (
+        #    next_token == self.tokenizer.eos_id
+        #)
+        return tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvs, eos_reached
 
     # @torch.inference_mode() #TORCH_XLA doesn't have this line
     def generate(
         self,
-        prompt_tokens: List[List[int]], #TODO: LIST OF LIST INSTEAD OF LIST
+        #prompt_tokens: List[List[int]], #TODO: LIST OF LIST INSTEAD OF LIST
+        prompts: List[str], #TODO: pass prompt_tokens instead?
         max_gen_len: int,
         temperature: float = 0.6,
         top_p: float = 0.9,
@@ -144,8 +160,11 @@ class Llama:
         echo: bool = False,#NEW LINE
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]: #NEW OUTPUT FORMAT
         params = self.model.params
-        bsz = len(prompt_tokens)
+        bsz = len(prompts)
+        #bsz = len(prompt_tokens)
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
+
+        prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
 
         # TODO: check if we need to optimize this block - llama1 has a simpler logic
         min_prompt_len = min(len(t) for t in prompt_tokens)
@@ -159,10 +178,10 @@ class Llama:
             tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long)
         if logprobs: #TODO: NEW CODE - optimize this block
             token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
+            token_logprobs.to(device)
 
         device = xm.xla_device()
         tokens = tokens.to(device)
-        token_logprobs.to(device)
 
         start_pos = 1
         cur_pos_tensor = torch.tensor(start_pos).to(device)
@@ -178,32 +197,19 @@ class Llama:
 
         decoding_start_time = time.time()
         for cur_pos in range(min_prompt_len, total_len): #TODO: drop dependency on cur_pos. min_prompt_len used to be start_pos
-            logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
-            # TODO: NEW CODE BLOCK - OPTIMIZE
-            if logprobs:
-                token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
-                    input=logits.transpose(1, 2),
-                    target=tokens[:, prev_pos + 1 : cur_pos + 1],
-                    reduction="none",
-                    ignore_index=pad_id,
-                )
-            #####
-
-            tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvs \
+            #logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvsm, eos_reached \
                 = self._generate_one_token_fn(
                     tokens, input_tokens, input_text_mask, cur_pos_tensor,
-                    input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p
+                    input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs
                 )
-            ###TODO: optimize this block of code
-            eos_reached |= (~input_text_mask[:, cur_pos]) & (
-                next_token == self.tokenizer.eos_id
-            )
-            prev_pos = cur_pos
-            if all(eos_reached):
-                xm.mark_step()
-                break
-            #####
             xm.mark_step()
+            ###TODO: optimize this block of code
+            #prev_pos = cur_pos
+            #if all(eos_reached):
+            #    xm.mark_step()
+            #    break
+            ####
         self.model.cache_kvs = cache_kvs
         print(f"Decoded in {time.time() - decoding_start_time:.5f} seconds")
 
@@ -219,6 +225,7 @@ class Llama:
             # cut to max gen len
             start = 0 if echo else len(prompt_tokens[i])
             toks = toks[start : len(prompt_tokens[i]) + max_gen_len]
+            probs = None
             if logprobs:
                 probs = token_logprobs[i][start : len(prompt_tokens[i]) + max_gen_len]
             # cut to eos tok if any

@@ -3,7 +3,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, List
 
 import fairscale.nn.model_parallel.initialize as fs_init
 import torch
@@ -95,15 +95,15 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
 
 
 class Attention(nn.Module):
-    def __init__(self, args: ModelArgs):
+    def __init__(self, args: ModelArgs, world_size: Optional[int] = None,
+                 rank: Optional[int] = None, groups: Optional[List] = None):
         super().__init__()
         #NEW ADDITION
-        self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-        model_parallel_size = fs_init.get_model_parallel_world_size()
-        self.n_local_heads = args.n_heads // model_parallel_size
-        self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
-        self.n_rep = self.n_local_heads // self.n_local_kv_heads
-        self.head_dim = args.dim // args.n_heads
+        #self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
+        #model_parallel_size = fs_init.get_model_parallel_world_size()
+        #self.n_local_heads = args.n_heads // model_parallel_size
+        #self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
+        #self.n_rep = self.n_local_heads // self.n_local_kv_heads
 
         if world_size is None:
             groups = get_model_parallel_group()
@@ -124,14 +124,16 @@ class Attention(nn.Module):
         )
         self.wk = ColumnParallelLinear(
             args.dim,
-            self.n_kv_heads * self.head_dim,
+            #self.n_kv_heads * self.head_dim, #TODO: bring this back instead of nxt line?
+            args.n_heads * self.head_dim,
             bias=False,
             gather_output=False,
             init_method=lambda x: x, #THIS CALL IS MADE SIMPLER: WORLD_SIZE, RANK, GROUP
         )
         self.wv = ColumnParallelLinear(
             args.dim,
-            self.n_kv_heads * self.head_dim,
+            #self.n_kv_heads * self.head_dim, #TODO: bring this back instead of nxt line?
+            args.n_heads * self.head_dim,
             bias=False,
             gather_output=False,
             init_method=lambda x: x, #THIS CALL IS MADE SIMPLER: WORLD_SIZE, RANK, GROUP
@@ -176,8 +178,8 @@ class Attention(nn.Module):
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
 
         xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim) #EVAL FOR OPTIMIZATION
-        xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim) #EVAL FOR OPTIMIZATION
+        xk = xk.view(bsz, seqlen, self.n_local_heads, self.head_dim) #EVAL FOR OPTIMIZATION - TODO: n_local_kv_heads
+        xv = xv.view(bsz, seqlen, self.n_local_heads, self.head_dim) #EVAL FOR OPTIMIZATION - TODO: n_local_kv_heads
 
         xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
@@ -209,10 +211,10 @@ class FeedForward(nn.Module):
         dim: int,
         hidden_dim: int,
         multiple_of: int,
+        ffn_dim_multiplier: Optional[float],
         world_size: Optional[int] = None,
         rank: Optional[int] = None,
         groups: Optional[List] = None,
-        ffn_dim_multiplier: Optional[float],
     ):
         super().__init__()
         hidden_dim = int(2 * hidden_dim / 3)
@@ -257,7 +259,8 @@ class FeedForward(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, layer_id: int, args: ModelArgs): #WE HAVE MORE PARAMETERS HERE
+    def __init__(self, layer_id: int, args: ModelArgs, world_size: Optional[int] = None,
+                 rank: Optional[int] = None, groups: Optional[List] = None):
         super().__init__()
         self.n_heads = args.n_heads
         self.dim = args.dim
@@ -304,7 +307,8 @@ class TransformerBlock(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, params: ModelArgs): #TORCH_XLA OFFERS MORE PARAMETERS HERE
+    def __init__(self, params: ModelArgs, world_size: Optional[int] = None,
+                 rank: Optional[int] = None, groups: Optional[List] = None):
         super().__init__()
         self.params = params
         self.vocab_size = params.vocab_size
@@ -325,6 +329,7 @@ class Transformer(nn.Module):
         self.layers = torch.nn.ModuleList()
         self.cache_kvs = []
         n_local_heads = divide_and_check_no_remainder(params.n_heads, world_size)
+        head_dim = params.dim // params.n_heads
         for layer_id in range(params.n_layers):
             # self.layers.append(TransformerBlock(layer_id, params)) #THIS CALL IS DIFF
             self.layers.append(TransformerBlock(layer_id, params, world_size=world_size,
@@ -343,17 +348,17 @@ class Transformer(nn.Module):
             world_size=world_size, rank=rank, groups=groups
         )
 
-        self.freqs_cis = precompute_freqs_cis(
+        freqs_cis = precompute_freqs_cis(
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
-        self.register_buffer("freqs_cis", self.freqs_cis)
+        self.register_buffer("freqs_cis", freqs_cis)
 
         mask = torch.full((1, 1, self.params.max_seq_len, self.params.max_seq_len),
                           float("-inf")).to(torch.float)
         mask = torch.triu(mask, diagonal=1)
         self.register_buffer("mask", mask)
 
-    @torch.no_guard()
+    @torch.no_grad()
     def forward(self, tokens: torch.Tensor, input_idexes: torch.Tensor, output_idex: torch.Tensor,
                 cache_kvs: List[Tuple[torch.Tensor, torch.Tensor]]):
         _bsz, seqlen = tokens.shape
