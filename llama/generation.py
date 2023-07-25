@@ -121,10 +121,10 @@ class Llama:
             )
 
         if temperature > 0:
-            probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
+            probs = torch.softmax(logits / temperature, dim=-1) #TODO: llama2 calls [:, -1]
             next_token = sample_top_p(probs, top_p)
         else:
-            next_token = torch.argmax(logits[:, -1], dim=-1)
+            next_token = torch.argmax(logits, dim=-1) #TODO: llama2 calls [:, -1]
         next_token = next_token.reshape(-1)
         # only replace token if prompt has already been generated
         input_text_mask_tmp = input_text_mask.index_select(1, cur_pos_tensor).squeeze(dim=1)
