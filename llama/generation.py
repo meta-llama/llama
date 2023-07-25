@@ -110,7 +110,7 @@ class Llama:
 
 
     def _generate_one_token(self, tokens, input_tokens, input_text_mask, cur_pos_tensor, 
-                            input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs):
+                            input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs, prev_pos):
         logits, cache_kvs = self.model(input_tokens, input_pos_tensor, output_pos_tensor, cache_kvs)
         if logprobs:
             token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
@@ -140,7 +140,7 @@ class Llama:
         input_tokens = tokens.index_select(1, input_pos_tensor)
 
         #TODO: optimize and bring back
-        eos_reached = False
+        eos_reached = False #temp variable
         #eos_reached |= (~input_text_mask[:, cur_pos]) & (
         #    next_token == self.tokenizer.eos_id
         #)
@@ -156,7 +156,6 @@ class Llama:
         echo: bool = False,#NEW LINE
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]: #NEW OUTPUT FORMAT
         params = self.model.params
-        #bsz = len(prompts)
         bsz = len(prompt_tokens)
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
 
@@ -183,7 +182,7 @@ class Llama:
         input_tokens = tokens.index_select(1, input_pos_tensor)
         cache_kvs = self.model.cache_kvs #TODO: revisit the cache implementation between the two models
 
-        prev_pos = 0 #TODO: drop this line
+        prev_pos = 0 #TODO: drop this parameter
         eos_reached = torch.tensor([False] * bsz, device=device)
         input_text_mask = tokens != pad_id
         xm.mark_step(wait=True)
@@ -194,7 +193,7 @@ class Llama:
             tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvsm, eos_reached \
                 = self._generate_one_token_fn(
                     tokens, input_tokens, input_text_mask, cur_pos_tensor,
-                    input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs
+                    input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs, prev_pos
                 )
             xm.mark_step()
             ###TODO: optimize this block of code
@@ -212,7 +211,7 @@ class Llama:
         # TODO: this block is different from llama1; it's best to re-optimize it as needed. no decode() call here
         out_tokens, out_logprobs = [], []
         for i, toks in enumerate(tokens.tolist()):
-            if i >= len(prompt_tokens):  #TODO: brought in from llama1 optimization - necessary for training?
+            if i >= len(prompt_tokens):  #TODO: brought in from llama1 optimization
                 break
             # cut to max gen len
             start = 0 if echo else len(prompt_tokens[i])
