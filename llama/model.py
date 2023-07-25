@@ -281,9 +281,9 @@ class TransformerBlock(nn.Module):
             world_size=world_size, rank=rank, groups=groups,
             ffn_dim_multiplier=args.ffn_dim_multiplier
         )
-        self.layer_id = layer_id #NEW LINE
-        self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps) #NEW LINE
-        self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps) #NEW LINE
+        self.layer_id = layer_id
+        self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
+        self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
 
     def forward(
         self,

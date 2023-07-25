@@ -121,7 +121,7 @@ class Llama:
             )
 
         if temperature > 0:
-            probs = torch.softmax(logits[:, -1] / temperature, dim=-1) #TODO: eval the perf impact of logits vs. logits[:,-1]
+            probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
             next_token = sample_top_p(probs, top_p)
         else:
             next_token = torch.argmax(logits[:, -1], dim=-1)
@@ -242,6 +242,7 @@ class Llama:
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
         prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
+        print("prompt_tokens ", prompt_tokens)
         generation_tokens, generation_logprobs = self.generate(
             prompt_tokens=prompt_tokens,
             max_gen_len=max_gen_len,
@@ -250,6 +251,7 @@ class Llama:
             logprobs=logprobs,
             echo=echo,
         )
+        print("generation_tokens ", generation_tokens)
         if logprobs:
             return [
                 {
@@ -342,29 +344,6 @@ class Llama:
             {"generation": {"role": "assistant", "content": self.tokenizer.decode(t)}}
             for t in generation_tokens
         ]
-
-    def prompt_completion(
-            self,
-            prompts: List[str],
-            temperature: float = 0.6,
-            top_p: float = 0.9,
-            max_gen_len: Optional[int] = None,
-            logprobs: bool = False,
-            ) -> List[int]:
-
-        with torch.no_grad():
-            prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
-            generation_tokens, generation_logprobs = self.generate(
-                prompt_tokens=prompt_tokens,
-                max_gen_len=256,
-                temperature=temperature,
-                top_p=top_p,
-                logprobs=logprobs,
-            )
-
-        return generation_tokens
-
-
 
 def sample_top_p(probs, p):
     probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)

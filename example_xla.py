@@ -124,11 +124,11 @@ def main(
 #cheese =>""",
     ]
     for _ in range(2):
-        generation_tokens = generator.prompt_completion(
+        generation_tokens = generator.text_completion(
             prompts, temperature=temperature, top_p=top_p, max_gen_len=256
         )
 
-        for result in generation_tokens:
+        for result in generation_tokens['generation']:
             print(result)
             print("\n==================================\n")
 
