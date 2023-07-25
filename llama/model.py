@@ -31,7 +31,7 @@ class ModelArgs:
     n_kv_heads: Optional[int] = None #NEW ADDITION
     vocab_size: int = -1  # defined later by tokenizer
     multiple_of: int = 256  # make SwiGLU hidden layer size multiple of large power of 2
-    ffn_dim_multiplier: Optional[float] = None #NEW ADDITION
+    ffn_dim_multiplier: Optional[float] = None
     norm_eps: float = 1e-5
 
     max_batch_size: int = 32
@@ -120,7 +120,10 @@ class Attention(nn.Module):
             args.n_heads * self.head_dim,
             bias=False,
             gather_output=False,
-            init_method=lambda x: x, #THIS CALL IS MADE SIMPLER: WORLD_SIZE, RANK, GROUP
+            init_method=lambda x: x,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
         )
         self.wk = ColumnParallelLinear(
             args.dim,
@@ -128,7 +131,10 @@ class Attention(nn.Module):
             args.n_heads * self.head_dim,
             bias=False,
             gather_output=False,
-            init_method=lambda x: x, #THIS CALL IS MADE SIMPLER: WORLD_SIZE, RANK, GROUP
+            init_method=lambda x: x,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
         )
         self.wv = ColumnParallelLinear(
             args.dim,
@@ -136,14 +142,20 @@ class Attention(nn.Module):
             args.n_heads * self.head_dim,
             bias=False,
             gather_output=False,
-            init_method=lambda x: x, #THIS CALL IS MADE SIMPLER: WORLD_SIZE, RANK, GROUP
+            init_method=lambda x: x,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
         )
         self.wo = RowParallelLinear(
             args.n_heads * self.head_dim,
             args.dim,
             bias=False,
             input_is_parallel=True,
-            init_method=lambda x: x, #THIS CALL IS MADE SIMPLER: WORLD_SIZE, RANK, GROUP
+            init_method=lambda x: x,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
         )
 
         # # NEW SETUP FOR KV CASHE DATA STRUCTURE
@@ -189,7 +201,7 @@ class Attention(nn.Module):
         keys = cache_k[:, :]
         values = cache_v[:, :]
 
-        # TODO: REVIEW AND BRING BACK THIS BLOCK OF CODE
+        # TODO: REPLACE BY TRANSFERING LOGIC TO LLAMA1 KV-CACHE ON TPU-PYTORCH
         # # REPEAT K/V HEADS IF N_KV_HEADS < N_HEADS
         # keys = repeat_kv(keys, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
         # values = repeat_kv(values, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
@@ -218,7 +230,6 @@ class FeedForward(nn.Module):
     ):
         super().__init__()
         hidden_dim = int(2 * hidden_dim / 3)
-        # TODO: REVIEW AND OPTIMIZE THIS BLOCK OF CODE
         # custom dim factor multiplier
         if ffn_dim_multiplier is not None:
             hidden_dim = int(ffn_dim_multiplier * hidden_dim)
@@ -243,16 +254,6 @@ class FeedForward(nn.Module):
             dim, hidden_dim, bias=False, gather_output=False, init_method=init_method,
             world_size=world_size, rank=rank, groups=groups
         )
-
-        # self.w1 = ColumnParallelLinear(
-        #     dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
-        # )
-        # self.w2 = RowParallelLinear(
-        #     hidden_dim, dim, bias=False, input_is_parallel=True, init_method=lambda x: x
-        # )
-        # self.w3 = ColumnParallelLinear(
-        #     dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
-        # )
 
     def forward(self, x):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
@@ -292,11 +293,6 @@ class TransformerBlock(nn.Module):
         input_idexes: torch.Tensor, 
         cache_kv: Tuple[torch.Tensor, torch.Tensor],
     ):
-        # h = x + self.attention.forward(
-        #     self.attention_norm(x), start_pos, freqs_cis, mask
-        # )
-        # out = h + self.feed_forward.forward(self.ffn_norm(h))
-        # return out
         h, new_cache_kv = self.attention.forward(
             self.attention_norm(x), freqs_cis, mask, input_idexes, cache_kv
         )
@@ -331,7 +327,6 @@ class Transformer(nn.Module):
         n_local_heads = divide_and_check_no_remainder(params.n_heads, world_size)
         head_dim = params.dim // params.n_heads
         for layer_id in range(params.n_layers):
-            # self.layers.append(TransformerBlock(layer_id, params)) #THIS CALL IS DIFF
             self.layers.append(TransformerBlock(layer_id, params, world_size=world_size,
                                                 rank=rank, groups=groups))
             cache_k = torch.zeros(
