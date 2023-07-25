@@ -166,7 +166,7 @@ class Llama:
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_len)
 
         pad_id = self.tokenizer.pad_id
-        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long)
+        tokens = torch.full((params.max_batch_size, total_len), pad_id, dtype=torch.long)
         for k, t in enumerate(prompt_tokens):
             tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long)
         if logprobs:
@@ -189,7 +189,7 @@ class Llama:
         xm.mark_step(wait=True)
 
         decoding_start_time = time.time()
-        for cur_pos in range(min_prompt_len, total_len): #TODO: drop dependency on cur_pos. min_prompt_len used to be start_pos
+        for _ in range(start_pos, total_len):
             #logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
             tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvsm, eos_reached \
                 = self._generate_one_token_fn(
@@ -206,7 +206,6 @@ class Llama:
         self.model.cache_kvs = cache_kvs
         print(f"Decoded in {time.time() - decoding_start_time:.5f} seconds")
 
-        # TODO: NEW CODE BLOCK - OPTIMIZE
         if logprobs:
             token_logprobs = token_logprobs.tolist()
 
