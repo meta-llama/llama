@@ -24,6 +24,7 @@ def main(
     max_seq_len: int = 128,
     max_gen_len: int = 64,
     max_batch_size: int = 4,
+    dynamo: bool = True,
 ):
     if not USE_CUDA:
         server = xp.start_server(9012, only_on_master=False)
@@ -32,6 +33,7 @@ def main(
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
+        dynamo=dynamo,
     )
 
     prompts = [
@@ -74,12 +76,13 @@ def _fn(
     max_seq_len: int = 128,
     max_gen_len: int = 64,
     max_batch_size: int = 4,
+    dynamo: bool = True,
 ):
     if USE_CUDA:
         os.environ['WORLD_SIZE'] = torch.cuda.device_count()
         os.environ['RANK'] = idx
         os.environ['LOCAL_RANK'] = idx
-    main(ckpt_dir, tokenizer_path, temperature, top_p, max_seq_len, max_gen_len, max_batch_size)
+    main(ckpt_dir, tokenizer_path, temperature, top_p, max_seq_len, max_gen_len, max_batch_size, dynamo)
 
 
 def mp_main(
@@ -91,6 +94,7 @@ def mp_main(
     max_seq_len: int = 128,
     max_gen_len: int = 64,
     max_batch_size: int = 4,
+    dynamo: bool = True,
 ):
     if mp:
         if USE_CUDA:
@@ -99,9 +103,9 @@ def mp_main(
         else:
             kwargs = {}
         xmp.spawn(_fn,
-                  args=(ckpt_dir, tokenizer_path, temperature, top_p, max_seq_len, max_gen_len, max_batch_size), **kwargs)
+                  args=(ckpt_dir, tokenizer_path, temperature, top_p, max_seq_len, max_gen_len, max_batch_size, dynamo), **kwargs)
     else:
-        main(ckpt_dir, tokenizer_path, temperature, top_p, max_seq_len, max_gen_len, max_batch_size)
+        main(ckpt_dir, tokenizer_path, temperature, top_p, max_seq_len, max_gen_len, max_batch_size, dynamo)
 
 
 if __name__ == "__main__":

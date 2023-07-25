@@ -59,6 +59,7 @@ class Llama:
         max_seq_len: int,
         max_batch_size: int,
         model_parallel_size: Optional[int] = None,
+        dynamo: bool = True,
     ) -> "Llama":
         # if not model_parallel_is_initialized():
         #     if model_parallel_size is None:
@@ -113,23 +114,24 @@ class Llama:
         model = model.to(device)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
-        return Llama(model, tokenizer, device)
+        return Llama(model, tokenizer, device, dynamo)
 
-    def __init__(self, model: Transformer, tokenizer: Tokenizer, device: torch.device):
+    def __init__(self, model: Transformer, tokenizer: Tokenizer, device: torch.device, dynamo: bool = True):
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
 
         self._generate_one_token_fn = self._generate_one_token
-        if USE_CUDA:
-            # Inductor errors out when compiles _generate_one_token_fn.
-            # TODO(alanwaketan): figure out why.
-            self.model = torch.compile(self.model, fullgraph=True)
-        else:
-            self._generate_one_token_fn = torch.compile(
-                self._generate_one_token_fn,
-                backend="torchxla_trace_once",
-                fullgraph=True)
+        if dynamo:
+            if USE_CUDA:
+                # Inductor errors out when compiles _generate_one_token_fn.
+                # TODO(alanwaketan): figure out why.
+                self.model = torch.compile(self.model, fullgraph=True)
+            else:
+                self._generate_one_token_fn = torch.compile(
+                    self._generate_one_token_fn,
+                    backend="torchxla_trace_once",
+                    fullgraph=True)
             
     def _generate_one_token(self, tokens, input_tokens, input_text_mask,
                             cur_pos_tensor, input_pos_tensor,
