@@ -112,7 +112,6 @@ class Llama:
     def _generate_one_token(self, tokens, input_tokens, input_text_mask, cur_pos_tensor, 
                             input_pos_tensor, output_pos_tensor, cache_kvs, temperature, top_p, logprobs):
         logits, cache_kvs = self.model(input_tokens, input_pos_tensor, output_pos_tensor, cache_kvs)
-        # TODO: NEW CODE BLOCK - OPTIMIZE
         if logprobs:
             token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
                 input=logits.transpose(1, 2),
@@ -120,7 +119,6 @@ class Llama:
                 reduction="none",
                 ignore_index=pad_id,
             )
-        #####
 
         if temperature > 0:
             probs = torch.softmax(logits[:, -1] / temperature, dim=-1) #TODO: eval the perf impact of logits vs. logits[:,-1]
@@ -148,25 +146,20 @@ class Llama:
         #)
         return tokens, input_tokens, cur_pos_tensor, input_pos_tensor, output_pos_tensor, cache_kvs, eos_reached
 
-    # @torch.inference_mode() #TORCH_XLA doesn't have this line
     def generate(
         self,
-        #prompt_tokens: List[List[int]], #TODO: LIST OF LIST INSTEAD OF LIST
-        prompts: List[str], #TODO: pass prompt_tokens instead?
+        prompt_tokens: List[List[int]],
         max_gen_len: int,
         temperature: float = 0.6,
         top_p: float = 0.9,
-        logprobs: bool = False,#NEW LINE
+        logprobs: bool = False,
         echo: bool = False,#NEW LINE
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]: #NEW OUTPUT FORMAT
         params = self.model.params
-        bsz = len(prompts)
-        #bsz = len(prompt_tokens)
+        #bsz = len(prompts)
+        bsz = len(prompt_tokens)
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
 
-        prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
-
-        # TODO: check if we need to optimize this block - llama1 has a simpler logic
         min_prompt_len = min(len(t) for t in prompt_tokens)
         max_prompt_len = max(len(t) for t in prompt_tokens)
         assert max_prompt_len <= params.max_seq_len
@@ -176,7 +169,7 @@ class Llama:
         tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long)
         for k, t in enumerate(prompt_tokens):
             tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long)
-        if logprobs: #TODO: NEW CODE - optimize this block
+        if logprobs:
             token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
             token_logprobs.to(device)
 
@@ -349,6 +342,28 @@ class Llama:
             {"generation": {"role": "assistant", "content": self.tokenizer.decode(t)}}
             for t in generation_tokens
         ]
+
+    def prompt_completion(
+            self,
+            prompts: List[str],
+            temperature: float = 0.6,
+            top_p: float = 0.9,
+            max_gen_len: Optional[int] = None,
+            logprobs: bool = False,
+            ) -> List[int]:
+
+        with torch.no_grad():
+            prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
+            generation_tokens, generation_logprobs = self.generate(
+                prompt_tokens=prompt_tokens,
+                max_gen_len=256,
+                temperature=temperature,
+                top_p=top_p,
+                logprobs=logprobs,
+            )
+
+        return generation_tokens
+
 
 
 def sample_top_p(probs, p):

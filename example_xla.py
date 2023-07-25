@@ -124,10 +124,9 @@ def main(
 #cheese =>""",
     ]
     for _ in range(2):
-        with torch.no_grad():
-            generation_tokens, generation_logprobs = generator.generate(
-                prompts, max_gen_len=256, temperature=temperature, top_p=top_p
-            )
+        generation_tokens = generator.prompt_completion(
+            prompts, temperature=temperature, top_p=top_p, max_gen_len=256
+        )
 
         for result in generation_tokens:
             print(result)
