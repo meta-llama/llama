@@ -128,7 +128,7 @@ def main(
             prompts, temperature=temperature, top_p=top_p, max_gen_len=256
         )
 
-        for result in generation_tokens['generation']:
+        for result in generation_tokens:
             print(result)
             print("\n==================================\n")
 
