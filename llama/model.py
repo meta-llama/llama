@@ -3,15 +3,19 @@
 
 import math
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, List
 
-import fairscale.nn.model_parallel.initialize as fs_init
 import torch
 import torch.nn.functional as F
-from fairscale.nn.model_parallel.layers import (
-    ColumnParallelLinear,
+from fairscale.nn.model_parallel.utils import divide_and_check_no_remainder
+
+from .xla_model_parallel import (
     ParallelEmbedding,
     RowParallelLinear,
+    ColumnParallelLinear,
+    get_model_parallel_group,
+    get_model_parallel_world_size,
+    get_model_parallel_rank,
 )
 from torch import nn
 
@@ -29,6 +33,7 @@ class ModelArgs:
 
     max_batch_size: int = 32
     max_seq_len: int = 2048
+    quant: bool = False
 
 
 class RMSNorm(torch.nn.Module):
@@ -66,11 +71,18 @@ def apply_rotary_emb(
     xk: torch.Tensor,
     freqs_cis: torch.Tensor,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-    xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
-    freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
-    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
-    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    xq_ = torch.view_as_complex(
+        xq.transpose(1, 2).reshape(-1, xq.shape[1], int(xq.shape[-1] / 2),
+                                   2).float())
+    xk_ = torch.view_as_complex(
+        xk.transpose(1, 2).reshape(-1, xq.shape[1], int(xq.shape[-1] / 2),
+                                   2).float())
+    xq_out = torch.view_as_real(xq_ * freqs_cis)
+    xk_out = torch.view_as_real(xk_ * freqs_cis)
+    xq_out = xq_out.reshape(xq.shape[0], xq.shape[2], xq.shape[1],
+                            xq.shape[3]).transpose(1, 2)
+    xk_out = xk_out.reshape(xk.shape[0], xk.shape[2], xk.shape[1],
+                            xk.shape[3]).transpose(1, 2)
     return xq_out.type_as(xq), xk_out.type_as(xk)
 
 
@@ -87,67 +99,96 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
 
 
 class Attention(nn.Module):
-    def __init__(self, args: ModelArgs):
+    def __init__(self,
+                 args: ModelArgs,
+                 world_size: Optional[int] = None,
+                 rank: Optional[int] = None,
+                 groups: Optional[List] = None):
         super().__init__()
+        if world_size is None:
+            groups = get_model_parallel_group()
+            world_size = get_model_parallel_world_size()
+            rank = get_model_parallel_rank()
+
         self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-        model_parallel_size = fs_init.get_model_parallel_world_size()
-        self.n_local_heads = args.n_heads // model_parallel_size
-        self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
+        model_parallel_size = world_size
+        self.n_local_heads = divide_and_check_no_remainder(args.n_heads, model_parallel_size)
+        self.n_local_kv_heads = divide_and_check_no_remainder(self.n_kv_heads, model_parallel_size)
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
+
+        init_method = lambda x: x
 
         self.wq = ColumnParallelLinear(
             args.dim,
             args.n_heads * self.head_dim,
             bias=False,
             gather_output=False,
-            init_method=lambda x: x,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=args.quant,
         )
         self.wk = ColumnParallelLinear(
             args.dim,
             self.n_kv_heads * self.head_dim,
             bias=False,
             gather_output=False,
-            init_method=lambda x: x,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=args.quant,
         )
         self.wv = ColumnParallelLinear(
             args.dim,
             self.n_kv_heads * self.head_dim,
             bias=False,
             gather_output=False,
-            init_method=lambda x: x,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=args.quant,
         )
         self.wo = RowParallelLinear(
             args.n_heads * self.head_dim,
             args.dim,
             bias=False,
             input_is_parallel=True,
-            init_method=lambda x: x,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=args.quant,
         )
 
-        self.cache_k = torch.zeros(
+        cache_k = torch.zeros(
             (
                 args.max_batch_size,
                 args.max_seq_len,
                 self.n_local_kv_heads,
                 self.head_dim,
             )
-        ).cuda()
-        self.cache_v = torch.zeros(
+        )
+        self.register_buffer("cache_k", cache_k)
+        cache_v = torch.zeros(
             (
                 args.max_batch_size,
                 args.max_seq_len,
                 self.n_local_kv_heads,
                 self.head_dim,
             )
-        ).cuda()
+        )
+        self.register_buffer("cache_v", cache_v)
 
     def forward(
         self,
         x: torch.Tensor,
-        start_pos: int,
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
+        input_indexes: torch.Tensor,
     ):
         bsz, seqlen, _ = x.shape
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
@@ -158,14 +199,11 @@ class Attention(nn.Module):
 
         xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
-        self.cache_k = self.cache_k.to(xq)
-        self.cache_v = self.cache_v.to(xq)
+        self.cache_k = self.cache_k.index_copy(1, input_indexes, xk)
+        self.cache_v = self.cache_v.index_copy(1, input_indexes, xv)
 
-        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
-        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
-
-        keys = self.cache_k[:bsz, : start_pos + seqlen]
-        values = self.cache_v[:bsz, : start_pos + seqlen]
+        keys = self.cache_k[:, :]
+        values = self.cache_v[:, :]
 
         # repeat k/v heads if n_kv_heads < n_heads
         keys = repeat_kv(keys, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
@@ -175,8 +213,7 @@ class Attention(nn.Module):
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
         scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
-        if mask is not None:
-            scores = scores + mask  # (bs, n_local_heads, seqlen, cache_len + seqlen)
+        scores = scores + mask  # (bs, n_local_heads, seqlen, max_seqlen)
         scores = F.softmax(scores.float(), dim=-1).type_as(xq)
         output = torch.matmul(scores, values)  # (bs, n_local_heads, seqlen, head_dim)
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
@@ -190,6 +227,10 @@ class FeedForward(nn.Module):
         hidden_dim: int,
         multiple_of: int,
         ffn_dim_multiplier: Optional[float],
+        world_size: Optional[int] = None,
+        rank: Optional[int] = None,
+        groups: Optional[List] = None,
+        quant: bool = False,
     ):
         super().__init__()
         hidden_dim = int(2 * hidden_dim / 3)
@@ -198,14 +239,45 @@ class FeedForward(nn.Module):
             hidden_dim = int(ffn_dim_multiplier * hidden_dim)
         hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
 
+        if world_size is None:
+            groups = get_model_parallel_group()
+            world_size = get_model_parallel_world_size()
+            rank = get_model_parallel_rank()
+
+        init_method = lambda x: x
+
         self.w1 = ColumnParallelLinear(
-            dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
+            dim,
+            hidden_dim,
+            bias=False,
+            gather_output=False,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=quant,
         )
         self.w2 = RowParallelLinear(
-            hidden_dim, dim, bias=False, input_is_parallel=True, init_method=lambda x: x
+            hidden_dim,
+            dim,
+            bias=False,
+            input_is_parallel=True,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=quant,
         )
         self.w3 = ColumnParallelLinear(
-            dim, hidden_dim, bias=False, gather_output=False, init_method=lambda x: x
+            dim,
+            hidden_dim,
+            bias=False,
+            gather_output=False,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=quant,
         )
 
     def forward(self, x):
@@ -213,17 +285,37 @@ class FeedForward(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, layer_id: int, args: ModelArgs):
+    def __init__(self,
+                 layer_id: int,
+                 args: ModelArgs,
+                 world_size: Optional[int] = None,
+                 rank: Optional[int] = None,
+                 groups: Optional[List] = None):
         super().__init__()
         self.n_heads = args.n_heads
         self.dim = args.dim
         self.head_dim = args.dim // args.n_heads
-        self.attention = Attention(args)
+
+        if world_size is None:
+            groups = get_model_parallel_group()
+            world_size = get_model_parallel_world_size()
+            rank = get_model_parallel_rank()
+
+        self.attention = Attention(
+            args,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+        )
         self.feed_forward = FeedForward(
             dim=args.dim,
             hidden_dim=4 * args.dim,
             multiple_of=args.multiple_of,
             ffn_dim_multiplier=args.ffn_dim_multiplier,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=args.quant,
         )
         self.layer_id = layer_id
         self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
@@ -232,57 +324,90 @@ class TransformerBlock(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        start_pos: int,
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
+        input_indexes: torch.Tensor,
     ):
         h = x + self.attention.forward(
-            self.attention_norm(x), start_pos, freqs_cis, mask
+            self.attention_norm(x), freqs_cis, mask, input_indexes
         )
         out = h + self.feed_forward.forward(self.ffn_norm(h))
         return out
 
 
 class Transformer(nn.Module):
-    def __init__(self, params: ModelArgs):
+    def __init__(self,
+                 params: ModelArgs,
+                 world_size: Optional[int] = None,
+                 rank: Optional[int] = None,
+                 groups: Optional[List] = None):
         super().__init__()
         self.params = params
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
 
+        if world_size is None:
+            groups = get_model_parallel_group()
+            world_size = get_model_parallel_world_size()
+            rank = get_model_parallel_rank()
+
+        init_method = lambda x: x
+
         self.tok_embeddings = ParallelEmbedding(
-            params.vocab_size, params.dim, init_method=lambda x: x
+            params.vocab_size,
+            params.dim,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
         )
 
         self.layers = torch.nn.ModuleList()
         for layer_id in range(params.n_layers):
-            self.layers.append(TransformerBlock(layer_id, params))
+            self.layers.append(TransformerBlock(
+                layer_id,
+                params,
+                world_size=world_size,
+                rank=rank,
+                groups=groups,
+            ))
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = ColumnParallelLinear(
-            params.dim, params.vocab_size, bias=False, init_method=lambda x: x
+            params.dim,
+            params.vocab_size,
+            bias=False,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            groups=groups,
+            quant=params.quant,
         )
 
-        self.freqs_cis = precompute_freqs_cis(
+        freqs_cis = precompute_freqs_cis(
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
+        self.register_buffer("freqs_cis", freqs_cis)
 
-    @torch.inference_mode()
-    def forward(self, tokens: torch.Tensor, start_pos: int):
+        mask = torch.full(
+            (1, 1, self.params.max_seq_len, self.params.max_seq_len),
+            float("-inf")).to(torch.float)
+        mask = torch.triu(mask, diagonal=1)
+        self.register_buffer("mask", mask)
+
+    @torch.no_grad()
+    def forward(self, tokens: torch.Tensor, input_indexes: torch.Tensor, output_index: Optional[torch.Tensor]):
         _bsz, seqlen = tokens.shape
+        assert _bsz == self.params.max_batch_size
         h = self.tok_embeddings(tokens)
-        self.freqs_cis = self.freqs_cis.to(h.device)
-        freqs_cis = self.freqs_cis[start_pos : start_pos + seqlen]
+        freqs_cis = self.freqs_cis.index_select(0, input_indexes)
 
-        mask = None
-        if seqlen > 1:
-            mask = torch.full(
-                (1, 1, seqlen, seqlen), float("-inf"), device=tokens.device
-            )
-            mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
+        mask = self.mask.index_select(2, input_indexes)
 
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
+            h = layer(h, freqs_cis, mask, input_indexes)
         h = self.norm(h)
+        if output_index is not None:
+            h = h.index_select(1, output_index - input_indexes[0]).squeeze(dim=1)
         output = self.output(h).float()
         return output
