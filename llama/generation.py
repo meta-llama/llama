@@ -258,7 +258,7 @@ class Llama:
                         f"{B_INST} {(prompt['content']).strip()} {E_INST} {(answer['content']).strip()} ",
                         bos=True,
                         eos=True,
-                    ).to(default_device())
+                    )
                     for prompt, answer in zip(
                         dialog[::2],
                         dialog[1::2],
@@ -273,7 +273,7 @@ class Llama:
                 f"{B_INST} {(dialog[-1]['content']).strip()} {E_INST}",
                 bos=True,
                 eos=False,
-            ).to(default_device())
+            )
             prompt_tokens.append(dialog_tokens)
 
         generation_tokens, generation_logprobs = self.generate(
