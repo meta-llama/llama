@@ -89,12 +89,15 @@ class Llama:
 
         start_time = time.time()
         checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
-        assert len(checkpoints) > 0, f"no checkpoint files found in {ckpt_dir}"
-        assert model_parallel_size == len(
-            checkpoints
-        ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
-        ckpt_path = checkpoints[get_model_parallel_rank()]
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        if len(checkpoints) > 0:
+            assert model_parallel_size == len(
+                checkpoints
+            ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
+            ckpt_path = checkpoints[rank]
+            checkpoint = torch.load(ckpt_path, map_location="cpu")
+        else:
+            print(f"no checkpoint files found in {ckpt_dir}, init model without loading checkpoint.")
+            checkpoint = None
         with open(Path(ckpt_dir) / "params.json", "r") as f:
             params = json.loads(f.read())
 
@@ -110,7 +113,8 @@ class Llama:
         else:
             torch.set_default_tensor_type(torch.BFloat16Tensor)
         model = Transformer(model_args)
-        model.load_state_dict(checkpoint, strict=False)
+        if checkpoint:
+            model.load_state_dict(checkpoint, strict=False)
         model = model.to(device)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
