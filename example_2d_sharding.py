@@ -69,8 +69,11 @@ def init(
     num_devices = xr.global_runtime_device_count()  # updated way to get device count
     device_ids = np.arange(num_devices)
 
-    x_dim = math.isqrt(num_devices) // 2
-    yz_dim = 2 * math.isqrt(num_devices)
+    # x_dim = math.isqrt(num_devices) // 2
+    # yz_dim = 2 * math.isqrt(num_devices)
+
+    x_dim = 2 # hard-coded for v5
+    yz_dim = 4 # hard-coded for v5
 
     col_mesh = xs.Mesh(device_ids, (1, num_devices))
     row_mesh = xs.Mesh(device_ids, (num_devices, 1))
@@ -103,7 +106,7 @@ def init(
     #    for t in model.cache_kvs[i]:
     #        xs.mark_sharding(t, col_mesh, (0,1,2,3))
 
-    generator = LLaMA(model, tokenizer, device, True)
+    generator = Llama(model, tokenizer, device, True)
     print(generator)
     print(f"Loaded in {time.time() - start_time:.2f} seconds")
     return generator
@@ -152,13 +155,14 @@ def main(
 #
 #cheese =>""",
     ]
+    prompt_tokens = [generator.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
     with torch.no_grad():
         results = generator.generate(
-            prompts, max_gen_len=1, temperature=temperature, top_p=top_p
+            prompt_tokens=prompt_tokens, max_gen_len=1, temperature=temperature, top_p=top_p
         )
     with torch.no_grad():
         results = generator.generate(
-            prompts, max_gen_len=256, temperature=temperature, top_p=top_p
+            prompt_tokens=prompt_tokens, max_gen_len=256, temperature=temperature, top_p=top_p
         )
     if xm.is_master_ordinal(local=False):
       for result in results:
