@@ -20,6 +20,9 @@ USE_CUDA = os.environ.get('USE_CUDA', False)
 # Some how xla init will slow down the CUDA speed.
 if not USE_CUDA:
     import torch_xla.core.xla_model as xm
+    import torch_xla.experimental.xla_sharding as xs
+    from torch_xla import runtime as xr
+    import numpy as np
 
 Role = Literal["system", "user", "assistant"]
 
@@ -60,6 +63,7 @@ class Llama:
         max_batch_size: int,
         model_parallel_size: Optional[int] = None,
         dynamo: bool = True,
+        spmd: bool = True,
     ) -> "Llama":
         # if not model_parallel_is_initialized():
         #     if model_parallel_size is None:
@@ -118,14 +122,41 @@ class Llama:
         model = model.to(device)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
-        return Llama(model, tokenizer, device, dynamo)
+        return Llama(model, tokenizer, device, dynamo, spmd)
 
-    def __init__(self, model: Transformer, tokenizer: Tokenizer, device: torch.device, dynamo: bool = True):
+    def __init__(self, model: Transformer, tokenizer: Tokenizer, device: torch.device, dynamo: bool = True, spmd: bool = True):
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
-
         self._generate_one_token_fn = self._generate_one_token
+
+        if spmd:
+            num_devices = xr.global_runtime_device_count()  # updated way to get device count
+            device_ids = np.arange(num_devices)
+            x_dim = 2 # hard-coded for v5
+            yz_dim = 4 # hard-coded for v5
+
+            col_mesh = xs.Mesh(device_ids, (1, num_devices))
+            row_mesh = xs.Mesh(device_ids, (num_devices, 1))
+            two_d_mesh = xs.Mesh(device_ids, (x_dim, yz_dim))
+            two_d_mesh_transpose = xs.Mesh(device_ids, (yz_dim, x_dim))
+
+            for name, layer in model.named_modules():
+                if 'tok_embeddings' in name:
+                    xs.mark_sharding(layer.weight, row_mesh, (0, 1))
+                if 'attention.' in name:
+                    if 'wo' in name:
+                        xs.mark_sharding(layer.weight, two_d_mesh_transpose, (0, 1))
+                    else:
+                        xs.mark_sharding(layer.weight, two_d_mesh, (0, 1))
+                if 'feed_forward.' in name:
+                    if 'w2' in name:
+                        xs.mark_sharding(layer.weight, two_d_mesh_transpose, (0, 1))
+                    else:
+                        xs.mark_sharding(layer.weight, two_d_mesh, (0, 1))
+                if 'output' in name:
+                    xs.mark_sharding(layer.weight, col_mesh, (0, 1))
+
         if dynamo:
             if USE_CUDA:
                 # Inductor errors out when compiles _generate_one_token_fn.
