@@ -136,6 +136,12 @@ class Llama:
             x_dim = 2 # hard-coded for v5
             yz_dim = 4 # hard-coded for v5
 
+            # manually shard the kv cache
+            four_d_mesh = xs.Mesh(device_ids, (1, 1, x_dim, yz_dim))
+            for layer in model.layers:
+                xs.mark_sharding(layer.attention.cache_k, four_d_mesh, (0, 1, 2, None))
+                xs.mark_sharding(layer.attention.cache_v, four_d_mesh, (0, 1, 2, None))
+
             col_mesh = xs.Mesh(device_ids, (1, num_devices))
             row_mesh = xs.Mesh(device_ids, (num_devices, 1))
             two_d_mesh = xs.Mesh(device_ids, (x_dim, yz_dim))
