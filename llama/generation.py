@@ -18,6 +18,7 @@ from fairscale.nn.model_parallel.initialize import (
 
 from llama.model import ModelArgs, Transformer
 from llama.tokenizer import Tokenizer
+from llama.utils import get_mem_info
 
 Role = Literal["system", "user", "assistant"]
 
@@ -65,6 +66,7 @@ class Llama:
                 model_parallel_size = int(os.environ.get("WORLD_SIZE", 1))
             initialize_model_parallel(model_parallel_size)
 
+        torch.cuda.empty_cache()
         local_rank = int(os.environ.get("LOCAL_RANK", 0))
         torch.cuda.set_device(local_rank)
 
@@ -82,6 +84,9 @@ class Llama:
         ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
         ckpt_path = checkpoints[get_model_parallel_rank()]
         checkpoint = torch.load(ckpt_path, map_location="cpu")
+        global_free_bytes, total_gpu_mem = get_mem_info()
+        print(f"Loaded checkpoint, mem_get_info: ({global_free_bytes} MBytes, {total_gpu_mem} MBytes)")
+
         with open(Path(ckpt_dir) / "params.json", "r") as f:
             params = json.loads(f.read())
 
@@ -95,7 +100,9 @@ class Llama:
         torch.set_default_tensor_type(torch.cuda.HalfTensor)
         model = Transformer(model_args)
         model.load_state_dict(checkpoint, strict=False)
-        print(f"Loaded in {time.time() - start_time:.2f} seconds")
+
+        global_free_bytes, total_gpu_mem = get_mem_info()
+        print(f"Loaded in {time.time() - start_time:.2f} seconds,  mem_get_info: ({global_free_bytes} MBytes, {total_gpu_mem} MBytes)")
 
         return Llama(model, tokenizer)
 

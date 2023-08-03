@@ -15,6 +15,8 @@ from fairscale.nn.model_parallel.layers import (
 )
 from torch import nn
 
+from llama.utils import get_mem_info
+
 
 @dataclass
 class ModelArgs:
@@ -256,7 +258,13 @@ class Transformer(nn.Module):
 
         self.layers = torch.nn.ModuleList()
         for layer_id in range(params.n_layers):
-            self.layers.append(TransformerBlock(layer_id, params))
+            global_free_bytes, total_gpu_mem = get_mem_info()
+            print(f"GPU memory before creating layer {layer_id} : ({global_free_bytes} MBytes, {total_gpu_mem} MBytes)")
+            tfb = TransformerBlock(layer_id, params)
+            global_free_after_bytes, total_gpu_mem = get_mem_info()
+            diff = global_free_bytes - global_free_after_bytes
+            print(f"GPU memory after creating layer {layer_id} : ({global_free_after_bytes} MBytes, {total_gpu_mem} MBytes). Estimated size of TransformerBlock {diff} MBytes")
+            self.layers.append(tfb)
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = ColumnParallelLinear(
