@@ -6,6 +6,14 @@ This release includes model weights and starting code for pretrained and fine-tu
 
 This repository is intended as a minimal example to load [Llama 2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/) models and run inference. For more detailed examples leveraging HuggingFace, see [llama-recipes](https://github.com/facebookresearch/llama-recipes/).
 
+## System Prompt Update
+
+### Observed Issue
+We received feedback from the community on our prompt template and we are providing an update to reduce the false refusal rates seen. False refusals occur when the model incorrectly refuses to answer a question that it should, for example due to overly broad instructions to be cautious in how it provides responses. 
+
+### Updated approach
+Based on evaluation and analysis, we recommend the removal of the system prompt as the default setting.  Pull request [#626](https://github.com/facebookresearch/llama/pull/626) removes the system prompt as the default option, but still provides an example to help enable experimentation for those using it. 
+
 ## Download
 
 ⚠️ **7/18: We're aware of people encountering a number of download issues today. Anyone still encountering issues should remove all local files, re-clone the repository, and [request a new download link](https://ai.meta.com/resources/models-and-libraries/llama-downloads/). It's critical to do all of these in case you have local corrupt files. When you receive the email, copy *only* the link text - it should begin with https://download.llamameta.net and not with https://l.facebook.com, which will give errors.**
