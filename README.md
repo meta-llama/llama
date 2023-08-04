@@ -9,10 +9,10 @@ This repository is intended as a minimal example to load [Llama 2](https://ai.me
 ## System Prompt Update
 
 ### Observed Issue
-We received feedback from the community on our prompt template and we’re providing an update to reduce the false refusal rates seen. False refusals occur when the model incorrectly refuses to answer a question that it should, for example due to overly broad instructions to be cautious in how it provides responses. 
+We received feedback from the community on our prompt template and we are providing an update to reduce the false refusal rates seen. False refusals occur when the model incorrectly refuses to answer a question that it should, for example due to overly broad instructions to be cautious in how it provides responses. 
 
 ### Updated approach
-Based on evaluation and analysis, we recommend the removal of the system prompt as the default setting.  Pull request # removes the system prompt as the default option, but still provides an example to help enable experimentation for those using it. 
+Based on evaluation and analysis, we recommend the removal of the system prompt as the default setting.  Pull request [#626](https://github.com/facebookresearch/llama/pull/626) removes the system prompt as the default option, but still provides an example to help enable experimentation for those using it. 
 
 ## Download
 
