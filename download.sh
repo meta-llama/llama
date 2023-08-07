@@ -3,6 +3,26 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
+md5check () { 
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        failed=0
+        while read -r hash file; do
+            if [[ -n "$hash" ]]; then
+                if [[ "$(md5 -q "$file")" != "$hash" ]]; then
+                    echo "$file: FAILED"
+                    failed=1
+                else
+                    echo "$file: OK"
+                fi
+            fi
+        done < "$1"
+        return $failed
+    else
+        md5sum -c "$1"
+        return $?
+    fi
+}
+
 read -p "Enter the URL from email: " PRESIGNED_URL
 echo ""
 read -p "Enter the list of models to download without spaces (7B,13B,70B,7B-chat,13B-chat,70B-chat), or press Enter for all: " MODEL_SIZE
@@ -20,7 +40,7 @@ wget ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_POLICY.md"
 echo "Downloading tokenizer"
 wget ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
 wget ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
-(cd ${TARGET_FOLDER} && md5sum -c tokenizer_checklist.chk)
+(cd ${TARGET_FOLDER} && md5check tokenizer_checklist.chk)
 
 for m in ${MODEL_SIZE//,/ }
 do
@@ -55,6 +75,6 @@ do
     wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
     wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
     echo "Checking checksums"
-    (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
+    (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5check checklist.chk)
 done
 
