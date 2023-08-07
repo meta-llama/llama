@@ -44,6 +44,9 @@ Dialog = List[Message]
 B_INST, E_INST = "[INST]", "[/INST]"
 B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
 
+SPECIAL_TAGS = [B_INST, E_INST, "<<SYS>>", "<</SYS>>"]
+UNSAFE_ERROR = "Error: special tags are not allowed as part of the prompt."
+
 
 class Llama:
     @staticmethod
@@ -217,7 +220,11 @@ class Llama:
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
         prompt_tokens = []
+        unsafe_requests = []
         for dialog in dialogs:
+            unsafe_requests.append(
+                any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog])
+            )
             if dialog[0]["role"] == "system":
                 dialog = [
                     {
@@ -270,16 +277,25 @@ class Llama:
                 {
                     "generation": {
                         "role": "assistant",
-                        "content": self.tokenizer.decode(t),
+                        "content": self.tokenizer.decode(t)
+                        if not unsafe
+                        else UNSAFE_ERROR,
                     },
                     "tokens": [self.tokenizer.decode(x) for x in t],
                     "logprobs": logprobs_i,
                 }
-                for t, logprobs_i in zip(generation_tokens, generation_logprobs)
+                for t, logprobs_i, unsafe in zip(
+                    generation_tokens, generation_logprobs, unsafe_requests
+                )
             ]
         return [
-            {"generation": {"role": "assistant", "content": self.tokenizer.decode(t)}}
-            for t in generation_tokens
+            {
+                "generation": {
+                    "role": "assistant",
+                    "content": self.tokenizer.decode(t) if not unsafe else UNSAFE_ERROR,
+                }
+            }
+            for t, unsafe in zip(generation_tokens, unsafe_requests)
         ]
 
 
