@@ -28,8 +28,7 @@ def main(
     spmd: bool = True,
 ):
     if not USE_CUDA:
-        # server = xp.start_server(9012, only_on_master=False)
-        pass
+        server = xp.start_server(9012, only_on_master=False)
     generator = Llama.build(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
@@ -38,8 +37,6 @@ def main(
         dynamo=dynamo,
         spmd=spmd,
     )
-
-    print(f'[WONJOO] max_batch_size={max_batch_size}')
 
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
@@ -58,13 +55,6 @@ def main(
 #        plush girafe => girafe peluche
 #        cheese =>""",
     ]
-
-    import time
-    print("About to start in 15 seconds")
-    server = xp.start_server(9012, only_on_master=False)
-    time.sleep(15)
-    print("Starting!")
-
     for _ in range(2):
         with torch.no_grad():
             results = generator.text_completion(
@@ -77,8 +67,6 @@ def main(
                 print(prompt)
                 print(f"> {result['generation']}")
                 print("\n==================================\n")
-
-    print("Finished!")
 
 
 def _fn(

@@ -110,9 +110,6 @@ class Llama:
             max_batch_size=max_batch_size,
             **params,
         )
-
-        model_args.print_values()
-
         tokenizer = Tokenizer(model_path=tokenizer_path)
         model_args.vocab_size = tokenizer.n_words
         if USE_CUDA:
@@ -135,10 +132,9 @@ class Llama:
 
         if spmd:
             num_devices = xr.global_runtime_device_count()  # updated way to get device count
-            # num_devices = 8 # hard-coded for v5-8
             device_ids = np.arange(num_devices)
-            x_dim = 2 # hard-coded for v5-8
-            yz_dim = 4 # hard-coded for v5-8
+            x_dim = 2 # hard-coded for v5
+            yz_dim = 4 # hard-coded for v5
 
             # manually shard the kv cache
             four_d_mesh = xs.Mesh(device_ids, (1, 1, x_dim, yz_dim))
@@ -148,41 +144,24 @@ class Llama:
 
             col_mesh = xs.Mesh(device_ids, (1, num_devices))
             row_mesh = xs.Mesh(device_ids, (num_devices, 1))
+            two_d_mesh = xs.Mesh(device_ids, (x_dim, yz_dim))
+            two_d_mesh_transpose = xs.Mesh(device_ids, (yz_dim, x_dim))
 
             for name, layer in model.named_modules():
                 if 'tok_embeddings' in name:
                     xs.mark_sharding(layer.weight, row_mesh, (0, 1))
                 if 'attention.' in name:
                     if 'wo' in name:
-                        xs.mark_sharding(layer.weight, row_mesh, (0, 1))
+                        xs.mark_sharding(layer.weight, two_d_mesh_transpose, (0, 1))
                     else:
-                        xs.mark_sharding(layer.weight, col_mesh, (0, 1))
+                        xs.mark_sharding(layer.weight, two_d_mesh, (0, 1))
                 if 'feed_forward.' in name:
                     if 'w2' in name:
-                        xs.mark_sharding(layer.weight, row_mesh, (0, 1))
+                        xs.mark_sharding(layer.weight, two_d_mesh_transpose, (0, 1))
                     else:
-                        xs.mark_sharding(layer.weight, col_mesh, (0, 1))
+                        xs.mark_sharding(layer.weight, two_d_mesh, (0, 1))
                 if 'output' in name:
                     xs.mark_sharding(layer.weight, col_mesh, (0, 1))
-
-            # Sharding strategy for 2D sharding
-            # two_d_mesh = xs.Mesh(device_ids, (x_dim, yz_dim))
-            # two_d_mesh_transpose = xs.Mesh(device_ids, (yz_dim, x_dim))
-            # for name, layer in model.named_modules():
-            #     if 'tok_embeddings' in name:
-            #         xs.mark_sharding(layer.weight, row_mesh, (0, 1))
-            #     if 'attention.' in name:
-            #         if 'wo' in name:
-            #             xs.mark_sharding(layer.weight, two_d_mesh_transpose, (0, 1))
-            #         else:
-            #             xs.mark_sharding(layer.weight, two_d_mesh, (0, 1))
-            #     if 'feed_forward.' in name:
-            #         if 'w2' in name:
-            #             xs.mark_sharding(layer.weight, two_d_mesh_transpose, (0, 1))
-            #         else:
-            #             xs.mark_sharding(layer.weight, two_d_mesh, (0, 1))
-            #     if 'output' in name:
-            #         xs.mark_sharding(layer.weight, col_mesh, (0, 1))
 
         if dynamo:
             if USE_CUDA:

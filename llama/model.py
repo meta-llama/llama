@@ -35,15 +35,6 @@ class ModelArgs:
     max_seq_len: int = 2048
     quant: bool = False
 
-    def print_values(self):
-        print(f'[WONJOO] ModelArgs')
-        print(f'[WONJOO] dim={self.dim}')
-        print(f'[WONJOO] n_layers={self.n_layers}')
-        print(f'[WONJOO] n_heads={self.n_heads}')
-        print(f'[WONJOO] max_batch_size={self.max_batch_size}')
-        print(f'[WONJOO] max_seq_len={self.max_seq_len}')
-        print(f'[WONJOO] quant={self.quant}')
-
 
 class RMSNorm(torch.nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
