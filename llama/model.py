@@ -145,7 +145,7 @@ class Attention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        start_pos: int,
+        valid_seq_pos: torch.tensor,
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
     ):
@@ -161,11 +161,15 @@ class Attention(nn.Module):
         self.cache_k = self.cache_k.to(xq)
         self.cache_v = self.cache_v.to(xq)
 
-        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
-        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
+        self.cache_k[:bsz, valid_seq_pos] = xk
+        self.cache_v[:bsz, valid_seq_pos] = xv
 
-        keys = self.cache_k[:bsz, : start_pos + seqlen]
-        values = self.cache_v[:bsz, : start_pos + seqlen]
+        if seqlen == 1:
+            keys = self.cache_k[:bsz]
+            values = self.cache_v[:bsz]
+        else:
+            keys = self.cache_k[:bsz, valid_seq_pos]
+            values = self.cache_v[:bsz, valid_seq_pos]
 
         # repeat k/v heads if n_kv_heads < n_heads
         keys = repeat_kv(keys, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
@@ -232,12 +236,12 @@ class TransformerBlock(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        start_pos: int,
+        valid_seq_pos : torch.Tensor,
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
     ):
         h = x + self.attention.forward(
-            self.attention_norm(x), start_pos, freqs_cis, mask
+            self.attention_norm(x), valid_seq_pos, freqs_cis, mask
         )
         out = h + self.feed_forward.forward(self.ffn_norm(h))
         return out
@@ -267,22 +271,36 @@ class Transformer(nn.Module):
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
 
+    def params_for_prefill(self, tokens : torch.Tensor, prev_pos : int, cur_pos : int, device : torch.device):
+        tokens_sliced = tokens[:, prev_pos:cur_pos].to(device=device)
+        valid_seq_pos = torch.arange(prev_pos, cur_pos, device=device)
+        seqlen = cur_pos - prev_pos
+        mask = torch.full(
+            (1, 1, seqlen, seqlen), float("-inf"), device=device
+        )
+        mask = torch.triu(mask, diagonal=valid_seq_pos[0] + 1)
+
+        return tokens_sliced, mask, valid_seq_pos
+
+    def params_for_incremental_gen(self, tokens : torch.Tensor, prev_pos : int, cur_pos : int, device : torch.device):
+        tokens_sliced = tokens[:, prev_pos:cur_pos].to(device=device)
+        valid_seq_pos = torch.arange(prev_pos, cur_pos, device=device)
+
+        mask = torch.full(
+            (1, 1, 1, self.params.max_seq_len), float("-inf"), device=device
+        )
+        mask[:, :, :, :valid_seq_pos.item() + 1] = 0.0
+
+        return tokens_sliced, mask, valid_seq_pos
+
     @torch.inference_mode()
-    def forward(self, tokens: torch.Tensor, start_pos: int):
-        _bsz, seqlen = tokens.shape
+    def forward(self, tokens: torch.Tensor, mask : torch.Tensor, valid_seq_pos : torch.Tensor):
         h = self.tok_embeddings(tokens)
         self.freqs_cis = self.freqs_cis.to(h.device)
-        freqs_cis = self.freqs_cis[start_pos : start_pos + seqlen]
-
-        mask = None
-        if seqlen > 1:
-            mask = torch.full(
-                (1, 1, seqlen, seqlen), float("-inf"), device=tokens.device
-            )
-            mask = torch.triu(mask, diagonal=start_pos + 1).type_as(h)
+        freqs_cis = self.freqs_cis[valid_seq_pos]
 
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
+            h = layer(h, valid_seq_pos, freqs_cis, mask)
         h = self.norm(h)
         output = self.output(h).float()
         return output

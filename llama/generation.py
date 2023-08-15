@@ -10,6 +10,7 @@ from typing import List, Literal, Optional, Tuple, TypedDict
 
 import torch
 import torch.nn.functional as F
+from torch.profiler import record_function
 from fairscale.nn.model_parallel.initialize import (
     get_model_parallel_rank,
     initialize_model_parallel,
@@ -102,6 +103,62 @@ class Llama:
         self.model = model
         self.tokenizer = tokenizer
 
+        self.compiled_model = None
+        self._cuda_graph = None
+        self._compiled_inputs = None
+        self._compiled_logits = None
+
+    def _compile_model(self, tokens_sliced : torch.Tensor, mask : torch.Tensor, valid_seq_pos : torch.Tensor):
+        assert self._cuda_graph is None and self._compiled_inputs is None and self._compiled_logits is None, "Already compiled the model"
+
+        self._compiled_inputs = tuple(v.clone() for v in (tokens_sliced, mask, valid_seq_pos))
+
+        s = torch.cuda.Stream()
+        s.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(s):
+            _ = self.model.forward(*self._compiled_inputs)
+        torch.cuda.current_stream().wait_stream(s)
+
+        self._cuda_graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(self._cuda_graph):
+            self._compiled_logits = self.model.forward(*self._compiled_inputs)
+
+        def replay(tokens, mask, valid_seq_pos):
+            self._compiled_inputs[0].copy_(tokens)
+            self._compiled_inputs[1].copy_(mask)
+            self._compiled_inputs[2].copy_(valid_seq_pos)
+
+            self._cuda_graph.replay()
+
+            return self._compiled_logits
+
+        return replay
+
+
+    def compile_and_call_model(self, tokens : torch.Tensor, prev_pos : int, cur_pos : int, use_cuda_graph : bool):
+        if prev_pos == 0:
+            with record_function("prefill"):
+                tokens_sliced, mask, valid_seq_pos = self.model.params_for_prefill(
+                    tokens, prev_pos, cur_pos, tokens.device)
+
+                logits = self.model.forward(tokens=tokens_sliced, mask=mask, valid_seq_pos=valid_seq_pos)
+        else:
+            with record_function("incremental_gen"):
+                tokens_sliced, mask, valid_seq_pos = self.model.params_for_incremental_gen(
+                    tokens, prev_pos, cur_pos, tokens.device)
+
+                bsz = tokens.shape[0]
+                if self.compiled_model is None:
+                    if use_cuda_graph:
+                        assert bsz == 1, "Only support bs=1 for now"
+                        self.compiled_model = self._compile_model(tokens_sliced, mask, valid_seq_pos)
+                    else:
+                        self.compiled_model = self.model.forward
+
+                logits = self.compiled_model(tokens=tokens_sliced, mask=mask, valid_seq_pos=valid_seq_pos)
+
+        return logits
+
     @torch.inference_mode()
     def generate(
         self,
@@ -111,6 +168,7 @@ class Llama:
         top_p: float = 0.9,
         logprobs: bool = False,
         echo: bool = False,
+        use_cuda_graph : bool = True,
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
         params = self.model.params
         bsz = len(prompt_tokens)
@@ -132,7 +190,8 @@ class Llama:
         eos_reached = torch.tensor([False] * bsz, device="cuda")
         input_text_mask = tokens != pad_id
         for cur_pos in range(min_prompt_len, total_len):
-            logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            logits = self.compile_and_call_model(tokens, prev_pos, cur_pos, use_cuda_graph=use_cuda_graph)
+
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
                     input=logits.transpose(1, 2),
@@ -186,6 +245,7 @@ class Llama:
         max_gen_len: Optional[int] = None,
         logprobs: bool = False,
         echo: bool = False,
+        use_cuda_graph : bool = True,
     ) -> List[CompletionPrediction]:
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
@@ -197,6 +257,7 @@ class Llama:
             top_p=top_p,
             logprobs=logprobs,
             echo=echo,
+            use_cuda_graph=use_cuda_graph,
         )
         if logprobs:
             return [
