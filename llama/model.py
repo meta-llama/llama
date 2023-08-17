@@ -14,7 +14,7 @@ from fairscale.nn.model_parallel.layers import (
     RowParallelLinear,
 )
 from torch import nn
-
+import xformers.ops as xops
 
 @dataclass
 class ModelArgs:
@@ -292,15 +292,23 @@ class Attention(nn.Module):
         keys = repeat_kv(keys, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
         values = repeat_kv(values, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
 
-        xq = xq.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim)
-        keys = keys.transpose(1, 2)
-        values = values.transpose(1, 2)
-        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
-        if mask is not None:
-            scores = scores + mask  # (bs, n_local_heads, seqlen, cache_len + seqlen)
-        scores = F.softmax(scores.float(), dim=-1).type_as(xq)
-        output = torch.matmul(scores, values)  # (bs, n_local_heads, seqlen, head_dim)
-        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
+        # xformers attention
+        if torch.is_inference_mode_enabled():
+            # Inference mode use default lower triangular mask
+            # In this case we can invoke flash attention for better performance
+            output = xops.memory_efficient_attention(
+                    xq, keys, values,
+                    attn_bias=xops.LowerTriangularMask(),
+                    )
+        else:
+            # Tranining mode use customized mask
+            # Maximize the flexibility for different kinds of mask
+            output = xops.memory_efficient_attention(
+                    xq, keys, keys,
+                    attn_bias=mask,
+                    )
+
+        output = output.contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
 
 
