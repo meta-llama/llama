@@ -72,7 +72,7 @@ Examples using llama-2-7b-chat:
 torchrun --nproc_per_node 1 example_chat_completion.py \
     --ckpt_dir llama-2-7b-chat/ \
     --tokenizer_path tokenizer.model \
-    --max_seq_len 512 --max_batch_size 4
+    --max_seq_len 512 --max_batch_size 6
 ```
 
 Llama 2 is a new technology that carries potential risks with use. Testing conducted to date has not — and could not — cover all scenarios.
