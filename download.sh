@@ -13,6 +13,13 @@ if [[ $MODEL_SIZE == "" ]]; then
     MODEL_SIZE="7B,13B,70B,7B-chat,13B-chat,70B-chat"
 fi
 
+# Automatically remove l.facebook.com redirect to avoid confusion
+if [[ $PRESIGNED_URL == *"l.facebook.com"* ]]; then
+    echo "Extracting presigned URL from redirect link"
+    u_param=$(echo "$PRESIGNED_URL" | grep -oP "(?<=u=)[^&]+")
+    PRESIGNED_URL=$(printf '%b' "$(echo "$u_param" | sed 's/%/\\x/g')")
+fi
+
 echo "Downloading LICENSE and Acceptable Usage Policy"
 wget ${PRESIGNED_URL/'*'/"LICENSE"} -O ${TARGET_FOLDER}"/LICENSE"
 wget ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_POLICY.md"
@@ -47,13 +54,26 @@ do
     echo "Downloading ${MODEL_PATH}"
     mkdir -p ${TARGET_FOLDER}"/${MODEL_PATH}"
 
+    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
+    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
+
     for s in $(seq -f "0%g" 0 ${SHARD})
     do
+	if [[ -f "${TARGET_FOLDER}/${MODEL_PATH}/consolidated.${s}.pth" ]]; then
+            echo "Found: ${TARGET_FOLDER}/${MODEL_PATH}/consolidated.${s}.pth, verifying checksum"
+            expected_checksum=$(grep -m 1 "consolidated.${s}.pth" "${TARGET_FOLDER}/${MODEL_PATH}/checklist.chk" | awk '{ print $1 }')
+            actual_checksum=$(md5sum "${TARGET_FOLDER}/${MODEL_PATH}/consolidated.${s}.pth" | awk '{ print $1 }')
+            if [[ "$actual_checksum" == "$expected_checksum" ]]; then
+                echo "Checksum OK: skipping ${TARGET_FOLDER}/${MODEL_PATH}/consolidated.${s}.pth"
+                continue
+            else
+                echo "Checksum FAILED: retrying ${TARGET_FOLDER}/${MODEL_PATH}/consolidated.${s}.pth"
+                rm ${TARGET_FOLDER}/${MODEL_PATH}/consolidated.${s}.pth
+            fi
+	fi
         wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${s}.pth"
     done
 
-    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
-    wget ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
     echo "Checking checksums"
     (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
 done
