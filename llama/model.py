@@ -4,6 +4,7 @@
 import math
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
+from .utils import default_device
 
 import fairscale.nn.model_parallel.initialize as fs_init
 import torch
@@ -95,6 +96,7 @@ class Attention(nn.Module):
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
+        self.device = args.device if args.device is not None else default_device()
 
         self.wq = ColumnParallelLinear(
             args.dim,
@@ -132,7 +134,7 @@ class Attention(nn.Module):
                 self.n_local_kv_heads,
                 self.head_dim,
             )
-        ).cuda()
+        ).to(self.device)
         self.cache_v = torch.zeros(
             (
                 args.max_batch_size,
@@ -140,7 +142,7 @@ class Attention(nn.Module):
                 self.n_local_kv_heads,
                 self.head_dim,
             )
-        ).cuda()
+        ).to(self.device)
 
     def forward(
         self,
