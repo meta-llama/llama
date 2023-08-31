@@ -18,7 +18,7 @@ In order to download the model weights and tokenizer, please visit the [Meta AI 
 
 Once your request is approved, you will receive a signed URL over email. Then run the download.sh script, passing the URL provided when prompted to start the download. Make sure that you copy the URL text itself, **do not use the 'Copy link address' option** when you right click the URL. If the copied URL text starts with: https://download.llamameta.net, you copied it correctly. If the copied URL text starts with: https://l.facebook.com, you copied it the wrong way.
 
-Pre-requisites: make sure you have `wget` and `md5sum` installed. Then to run the script: `./download.sh`.
+Pre-requisites: Make sure you have `wget` and `md5sum` installed. Then to run the script: `./download.sh`.
 
 Keep in mind that the links expire after 24 hours and a certain amount of downloads. If you start seeing errors such as `403: Forbidden`, you can always re-request a link.
 
@@ -50,7 +50,7 @@ All models support sequence length up to 4096 tokens, but we pre-allocate the ca
 
 These models are not finetuned for chat or Q&A. They should be prompted so that the expected answer is the natural continuation of the prompt.
 
-See `example_text_completion.py` for some examples. To illustrate, see command below to run it with the llama-2-7b model (`nproc_per_node` needs to be set to the `MP` value):
+See `example_text_completion.py` for some examples. To illustrate, see the command below to run it with the llama-2-7b model (`nproc_per_node` needs to be set to the `MP` value):
 
 ```
 torchrun --nproc_per_node 1 example_text_completion.py \
