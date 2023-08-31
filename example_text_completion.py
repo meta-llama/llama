@@ -9,6 +9,7 @@ from llama import Llama
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
+    backend: str = 'cuda',
     temperature: float = 0.6,
     top_p: float = 0.9,
     max_seq_len: int = 128,
@@ -19,6 +20,7 @@ def main(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
+        backend=backend,
         max_batch_size=max_batch_size,
     )
 
@@ -29,11 +31,11 @@ def main(
         """A brief message congratulating the team on the launch:
 
         Hi everyone,
-        
+
         I just """,
         # Few shot prompt (providing a few examples before asking model to complete more);
         """Translate English to French:
-        
+
         sea otter => loutre de mer
         peppermint => menthe poivrée
         plush girafe => girafe peluche
