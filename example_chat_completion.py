@@ -1,11 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
-from typing import Optional
+from typing import List, Optional
 
 import fire
 
-from llama import Llama
+from llama import Llama, Dialog
 
 
 def main(
@@ -39,7 +39,7 @@ def main(
         max_batch_size=max_batch_size,
     )
 
-    dialogs = [
+    dialogs: List[Dialog] = [
         [{"role": "user", "content": "what is the recipe of mayonnaise?"}],
         [
             {"role": "user", "content": "I am going to Paris, what should I see?"},
