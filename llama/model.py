@@ -264,6 +264,7 @@ class Transformer(nn.Module):
         )
 
         self.freqs_cis = precompute_freqs_cis(
+            # self.params.max_seq_len is multiplied by 2 because the token limit is 4096, so you can't make it bigger than that, and this is why it's set the the maximun (4096).
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
 
