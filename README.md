@@ -30,10 +30,11 @@ We are also providing downloads on [Hugging Face](https://huggingface.co/meta-ll
 
 In a conda env with PyTorch / CUDA available, clone the repo and run in the top-level directory:
 
-
 ```
 pip install -e .
 ```
+
+Then to run the script: `./download.sh`. There are optional ENV variables that can be used for automation.
 
 ## Inference
 
