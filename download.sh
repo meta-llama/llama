@@ -3,9 +3,20 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
-PRESIGNED_URL="${PRESIGNED_URL:-}"  # replace with presigned url from email
-MODEL_SIZE="7B,13B,30B,65B"         # edit this list with the model sizes you wish to download
-TARGET_FOLDER="${TARGET_FOLDER:-}"  # where all files should end up
+# Check if PRESIGNED_URL environment variable is set
+if [ -z "$PRESIGNED_URL" ]; then
+  read -p "Enter the URL from email: " PRESIGNED_URL
+fi
+
+# Check if MODEL_SIZE environment variable is set
+if [ -z "$MODEL_SIZE" ]; then
+  read -p "Enter the list of models to download without spaces (7B,13B,70B,7B-chat,13B-chat,70B-chat), or press Enter for all: " MODEL_SIZE
+fi
+
+# Check if TARGET_FOLDER environment variable is set
+if [ -z "$TARGET_FOLDER" ]; then
+  TARGET_FOLDER="."  # Default target folder
+fi
 
 mkdir -p ${TARGET_FOLDER}
 
