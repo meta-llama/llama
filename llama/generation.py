@@ -133,6 +133,7 @@ class Llama:
         temperature: float = 0.6,
         top_p: float = 0.9,
         logprobs: bool = False,
+        repetition_penalty: float = (1.0/0.9),
         echo: bool = False,
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
         """
@@ -175,6 +176,17 @@ class Llama:
         input_text_mask = tokens != pad_id
         for cur_pos in range(min_prompt_len, total_len):
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            if repetition_penalty != 1.0:
+                logits_new = logits.clone()
+                batch_size = len(tokens)
+                for i in range(batch_size):
+                    for token in set(tokens[i].tolist()):
+                        # if score < 0 then repetition penalty has to multiplied to reduce the previous token probability
+                        if logits[0, i, token] < 0:
+                            logits_new[0, i, token] = logits[0, i, token] * repetition_penalty
+                        else:
+                            logits_new[0, i, token] = logits[0, i, token] / repetition_penalty
+                logits = logits_new
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
                     input=logits.transpose(1, 2),
