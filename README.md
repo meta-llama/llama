@@ -34,6 +34,8 @@ In a conda env with PyTorch / CUDA available, clone the repo and run in the top-
 pip install -e .
 ```
 
+Then to run the script: `./download.sh`. There are optional ENV variables that can be used for automation.
+
 ## Inference
 
 Different models require different model-parallel (MP) values:
