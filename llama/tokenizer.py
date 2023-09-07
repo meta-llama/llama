@@ -3,7 +3,7 @@
 
 import os
 from logging import getLogger
-from typing import List, Union
+from typing import List, Optional
 
 from sentencepiece import SentencePieceProcessor
 
@@ -12,7 +12,7 @@ logger = getLogger()
 
 
 class Tokenizer:
-    def __init__(self, model_path: Union[str, None] = None):
+    def __init__(self, model_path: Optional[str] = None):
 
         if model_path is not None:
             if not os.path.isfile(model_path):
