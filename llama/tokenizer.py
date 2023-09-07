@@ -12,9 +12,16 @@ logger = getLogger()
 
 
 class Tokenizer:
+    """tokenizing and encoding/decoding text using SentencePiece."""
     def __init__(self, model_path: Optional[str] = None):
+        """
+        Initializes the Tokenizer with a SentencePiece model.
 
+        Args:
+            model_path (str): The path to the SentencePiece model file.
+        """
         if model_path is not None:
+            # reload tokenizer if possible
             if not os.path.isfile(model_path):
                 raise FileNotFoundError(f"Model file not found: {model_path}")
             self.sp_model = SentencePieceProcessor(model_file=model_path)
@@ -32,6 +39,17 @@ class Tokenizer:
             assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
 
     def encode(self, s: str, bos: bool = False, eos: bool = False) -> List[int]:
+        """
+        Encodes a string into a list of token IDs.
+
+        Args:
+            s (str): The input string to be encoded.
+            bos (bool): Whether to prepend the beginning-of-sequence token.
+            eos (bool): Whether to append the end-of-sequence token.
+
+        Returns:
+            List[int]: A list of token IDs.
+        """
         assert isinstance(s, str), "Input 's' must be a string"
         try:
             t = self.sp_model.encode(s)
@@ -48,4 +66,13 @@ class Tokenizer:
         return t
 
     def decode(self, t: List[int]) -> str:
+        """
+        Decodes a list of token IDs into a string.
+
+        Args:
+            t (List[int]): The list of token IDs to be decoded.
+
+        Returns:
+            str: The decoded string.
+        """
         return self.sp_model.decode(t)
