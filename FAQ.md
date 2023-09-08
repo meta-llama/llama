@@ -44,9 +44,15 @@ A: We believe developers will have plenty to work with as we release our model w
 
 A: Yes. There are more details about our use of human annotators in the [research paper](https://arxiv.org/abs/2307.09288). 
 
+**Q: Can I use the output of the models to improve the Llama 2 family of models, even though I cannot use them for other LLMs?**
+
+A: It's correct that the license restricts using any part of the Llama 2 models, including the response outputs to train another AI model (LLM or otherwise). However, one can use the outputs to further train the Llama 2 family of models. Techniques such as Quantized Aware Training (QAT) utilize such a technique and hence this is allowed. 
+
+
 **Q: What is Llama's max output token length?**
 
 A: 2048. If you want to use more tokens, you will need to fine-tune the model so that it supports longer sequences. More information and examples on fine tuning can be found in the [llama recipes repo](https://github.com/facebookresearch/llama-recipes). 
+
 
 **Q: Is there a multi-lingual checkpoint for researchers to download?**
 
@@ -54,6 +60,3 @@ A: The Llama models thus far have been mainly focused on the English language. W
 - https://github.com/longyuewangdcu/Chinese-Llama-2
 - https://huggingface.co/seeledu/Chinese-Llama-2-7B
 
-**Q: Can I use the output of the models to improve the Llama 2 family of models, even though I cannot use them for other LLMs?**
-
-A: It's correct that the license restricts using any part of the Llama 2 models, including the response outputs to train another AI model (LLM or otherwise). However, one can use the outputs to further train the Llama 2 family of models. Techniques such as Quantized Aware Training (QAT) utilize such a technique and hence this is allowed. 
