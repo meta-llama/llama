@@ -58,9 +58,7 @@ A:
 **Q: Is there a multi-lingual checkpoint for researchers to download?**
 
 A: 
-The Llama models thus far have been mainly focused on the English language. We are looking at true multi-linguality for the future but for now there are a lot of community projects that fine tune Llama models to support languages like chinese. For example:
-- https://github.com/longyuewangdcu/Chinese-Llama-2
-- https://huggingface.co/seeledu/Chinese-Llama-2-7B
+The Llama models thus far have been mainly focused on the English language. We are looking at true multi-linguality for the future but for now there are a lot of community projects that fine tune Llama models to support languages.
 
 **Q: How do can we fine tune the Llama 2 models?**
 
