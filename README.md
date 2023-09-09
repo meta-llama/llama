@@ -30,7 +30,7 @@ We are also providing downloads on [Hugging Face](https://huggingface.co/meta-ll
 
 You can follow the steps below to quickly get up and running with Llama 2 models. These steps will let you run quick inference locally. For more examples, see the [Llama 2 recipes repository](https://github.com/facebookresearch/llama-recipes). 
 
-1. In a conda env with PyTorch / CUDA availableClone and download this repository
+1. In a conda env with PyTorch / CUDA available clone and download this repository.
 
 2. In the top level directory run:
     ```bash
