@@ -26,16 +26,16 @@ Keep in mind that the links expire after 24 hours and a certain amount of downlo
 
 We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta AI website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
 
-## Setup
+## Quick Start
 
 You can follow the steps below to quickly get up and running with Llama 2 models. These steps will let you run quick inference locally. For more examples, see the [Llama 2 recipes repository](https://github.com/facebookresearch/llama-recipes). 
 
 1. In a conda env with PyTorch / CUDA availableClone and download this repository
 
 2. In the top level directory run:
-```bash
-pip install -e .
-```
+    ```bash
+    pip install -e .
+    ```
 3. Visit the [Meta.AI website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
 
 4. Once registered, you will get an email with a URL to download the models. You will need this URL when you run the download.sh script.
