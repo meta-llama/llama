@@ -47,3 +47,25 @@ A: Yes. There are more details about our use of human annotators in the [researc
 **Q: Can I use the output of the models to improve the Llama 2 family of models, even though I cannot use them for other LLMs?**
 
 A: It's correct that the license restricts using any part of the Llama 2 models, including the response outputs to train another AI model (LLM or otherwise). However, one can use the outputs to further train the Llama 2 family of models. Techniques such as Quantized Aware Training (QAT) utilize such a technique and hence this is allowed. 
+
+
+**Q: What is Llama 2's max sequence length?**
+
+A: 
+4096. If you want to use more tokens, you will need to fine-tune the model so that it supports longer sequences. More information and examples on fine tuning can be found in the [Llama Recipes repository](https://github.com/facebookresearch/llama-recipes). 
+
+
+**Q: Is there a multi-lingual checkpoint for researchers to download?**
+
+A: 
+The Llama models thus far have been mainly focused on the English language. We are looking at true multi-linguality for the future but for now there are a lot of community projects that fine tune Llama models to support languages.
+
+**Q: How do can we fine tune the Llama 2 models?**
+
+A: 
+You can find examples on how to fine tune the Llama 2 models in the [Llama Recipes repository](https://github.com/facebookresearch/llama-recipes). 
+
+**Q: How can I pretrain the Llama 2 models?**
+
+A: 
+You can adapt the finetuning script found [here](https://github.com/facebookresearch/llama-recipes/blob/main/llama_finetuning.py) for pretraining. You can also find the hyperparams used for pretraining in Section 2 of [the LLama 2 paper](https://arxiv.org/pdf/2307.09288.pdf).
