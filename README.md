@@ -36,11 +36,11 @@ You can follow the steps below to quickly get up and running with Llama 2 models
     ```bash
     pip install -e .
     ```
-3. Visit the [Meta.AI website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
+3. Visit the [Meta AI website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
 
 4. Once registered, you will get an email with a URL to download the models. You will need this URL when you run the download.sh script.
 
-5. Navigate to your downloaded llama repository and run the download.sh script. 
+5. Once you get the email, navigate to your downloaded llama repository and run the download.sh script. 
     - Make sure to grant execution permissions to the download.sh script
     - During this process, you will be prompted to enter the URL from the email. 
     - Do not use the “Copy Link” option but rather make sure to manually copy the link from the email.
