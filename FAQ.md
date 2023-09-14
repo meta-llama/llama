@@ -60,7 +60,7 @@ A:
 A: 
 The Llama models thus far have been mainly focused on the English language. We are looking at true multi-linguality for the future but for now there are a lot of community projects that fine tune Llama models to support languages.
 
-**Q: How do can we fine tune the Llama 2 models?**
+**Q: How can I fine tune the Llama 2 models?**
 
 A: 
 You can find examples on how to fine tune the Llama 2 models in the [Llama Recipes repository](https://github.com/facebookresearch/llama-recipes). 
