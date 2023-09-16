@@ -69,3 +69,6 @@ You can find examples on how to fine tune the Llama 2 models in the [Llama Recip
 
 A: 
 You can adapt the finetuning script found [here](https://github.com/facebookresearch/llama-recipes/blob/main/llama_finetuning.py) for pretraining. You can also find the hyperparams used for pretraining in Section 2 of [the LLama 2 paper](https://arxiv.org/pdf/2307.09288.pdf).
+
+**Q: Am I allowed a develop derivative models through fine-tuning based on Llama 2 for languages other than english? Is this a violation of the acceptable use policy?**
+A: No, it is NOT a violation of the acceptable use policy (AUP) to finetune on a non-english language and then use commercially as long as you follow the AUP and the terms of the license. We did include language in the responsible use guide around this because documentation and support doesn't yet exist for languages beyond english. Llama 2 itself is english language centric and you can read the paper for more details [here](https://arxiv.org/abs/2307.09288).
