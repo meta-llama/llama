@@ -124,5 +124,7 @@ See the [LICENSE](LICENSE) file, as well as our accompanying [Acceptable Use Pol
 2. [Llama 2 technical overview](https://ai.meta.com/resources/models-and-libraries/llama)
 3. [Open Innovation AI Research Community](https://ai.meta.com/llama/open-innovation-ai-research-community/)
 
+For common questions, the FAQ can be found [here](https://github.com/facebookresearch/llama/blob/main/FAQ.md) which will be kept up to date over time as new questions arise. 
+
 ## Original LLaMA
 The repo for the original llama release is in the [`llama_v1`](https://github.com/facebookresearch/llama/tree/llama_v1) branch.
