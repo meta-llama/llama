@@ -2,4 +2,3 @@ torch
 fairscale
 fire
 sentencepiece
-xformers
