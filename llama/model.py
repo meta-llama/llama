@@ -290,6 +290,7 @@ class Attention(nn.Module):
                 )
 
         output = output.contiguous().view(bsz, seqlen, -1)
+        return output
 
     def forward(
         self,
