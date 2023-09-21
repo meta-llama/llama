@@ -38,10 +38,12 @@ class RMSNorm(torch.nn.Module):
 
         Args:
             dim (int): The dimension of the input tensor.
-            eps (float, optional): A small value added to the denominator for numerical stability. Default is 1e-6.
+            eps (float, optional): A small value added to the denominator for
+                numerical stability. Default is 1e-6.
 
         Attributes:
-            eps (float): A small value added to the denominator for numerical stability.
+            eps (float): A small value added to the denominator for numerical
+                stability.
             weight (nn.Parameter): Learnable scaling parameter.
 
         """
@@ -79,22 +81,22 @@ class RMSNorm(torch.nn.Module):
 
 def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
     """
-    Precompute the frequency tensor for complex exponentials (cis) with given dimensions.
+    Precompute the frequency tensor for complex exponentials (cis) with given
+    dimensions.
 
-    This function calculates a frequency tensor with complex exponentials using the given dimension 'dim'
-    and the end index 'end'. The 'theta' parameter scales the frequencies.
-    The returned tensor contains complex values in complex64 data type.
+    This function calculates a frequency tensor with complex exponentials
+    using the given dimension `dim` and the end index `end`. The `theta`
+    parameter scales the frequencies. The returned tensor contains complex
+    values in complex64 data type.
 
     Args:
         dim (int): Dimension of the frequency tensor.
         end (int): End index for precomputing frequencies.
-        theta (float, optional): Scaling factor for frequency computation. Defaults to 10000.0.
+        theta (float, optional): Scaling factor for frequency computation.
+            Defaults to 10000.0.
 
     Returns:
         torch.Tensor: Precomputed frequency tensor with complex exponentials.
-
-    
-        
 
     """
     freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
@@ -108,8 +110,9 @@ def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
     """
     Reshape frequency tensor for broadcasting it with another tensor.
 
-    This function reshapes the frequency tensor to have the same shape as the target tensor 'x'
-    for the purpose of broadcasting the frequency tensor during element-wise operations.
+    This function reshapes the frequency tensor to have the same shape as the
+    target tensor `x` for the purpose of broadcasting the frequency tensor
+    during element-wise operations.
 
     Args:
         freqs_cis (torch.Tensor): Frequency tensor to be reshaped.
@@ -119,8 +122,10 @@ def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
         torch.Tensor: Reshaped frequency tensor.
 
     Raises:
-        AssertionError: If the frequency tensor doesn't match the expected shape.
-        AssertionError: If the target tensor 'x' doesn't have the expected number of dimensions.
+        AssertionError: If the frequency tensor doesn't match the expected
+            shape.
+        AssertionError: If the target tensor 'x' doesn't have the expected number of
+            dimensions.
     """
     ndim = x.ndim
     assert 0 <= 1 < ndim
@@ -137,20 +142,21 @@ def apply_rotary_emb(
     """
     Apply rotary embeddings to input tensors using the given frequency tensor.
 
-    This function applies rotary embeddings to the given query 'xq' and key 'xk' tensors using the provided
-    frequency tensor 'freqs_cis'. The input tensors are reshaped as complex numbers, and the frequency tensor
-    is reshaped for broadcasting compatibility. The resulting tensors contain rotary embeddings and are
-    returned as real tensors.
+    This function applies rotary embeddings to the given query `xq` and key
+    `xk` tensors using the provided frequency tensor `freqs_cis`. The input
+    tensors are reshaped as complex numbers, and the frequency tensor is
+    reshaped for broadcasting compatibility. The resulting tensors contain
+    rotary embeddings and are returned as real tensors.
 
     Args:
         xq (torch.Tensor): Query tensor to apply rotary embeddings.
         xk (torch.Tensor): Key tensor to apply rotary embeddings.
-        freqs_cis (torch.Tensor): Precomputed frequency tensor for complex exponentials.
+        freqs_cis (torch.Tensor): Precomputed frequency tensor for complex
+            exponentials.
 
     Returns:
-        Tuple[torch.Tensor, torch.Tensor]: Tuple of modified query tensor and key tensor with rotary embeddings.
-
-        
+        Tuple[torch.Tensor, torch.Tensor]: Tuple of modified query tensor and
+            key tensor with rotary embeddings.
 
     """
     xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))

@@ -13,6 +13,7 @@ logger = getLogger()
 
 class Tokenizer:
     """tokenizing and encoding/decoding text using SentencePiece."""
+
     def __init__(self, model_path: str):
         """
         Initializes the Tokenizer with a SentencePiece model.
@@ -41,7 +42,8 @@ class Tokenizer:
 
         Args:
             s (str): The input string to be encoded.
-            bos (bool): Whether to prepend the beginning-of-sequence token.
+            bos (bool): Whether to prepend the beginning-of-sequence
+                token.
             eos (bool): Whether to append the end-of-sequence token.
 
         Returns:
