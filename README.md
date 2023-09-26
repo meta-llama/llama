@@ -14,7 +14,7 @@ See [UPDATES.md](UPDATES.md). Also for a running list of frequently asked questi
 
 ⚠️ **7/18: We're aware of people encountering a number of download issues today. Anyone still encountering issues should remove all local files, re-clone the repository, and [request a new download link](https://ai.meta.com/resources/models-and-libraries/llama-downloads/). It's critical to do all of these in case you have local corrupt files.**
 
-In order to download the model weights and tokenizer, please visit the [Meta AI website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and accept our License.
+In order to download the model weights and tokenizer, please visit the [Meta website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and accept our License.
 
 Once your request is approved, you will receive a signed URL over email. Then run the download.sh script, passing the URL provided when prompted to start the download.
 
@@ -24,7 +24,7 @@ Keep in mind that the links expire after 24 hours and a certain amount of downlo
 
 ### Access on Hugging Face
 
-We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta AI website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
+We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
 
 ## Quick Start
 
@@ -36,7 +36,7 @@ You can follow the steps below to quickly get up and running with Llama 2 models
     ```bash
     pip install -e .
     ```
-3. Visit the [Meta AI website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
+3. Visit the [Meta website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
 
 4. Once registered, you will get an email with a URL to download the models. You will need this URL when you run the download.sh script.
 
