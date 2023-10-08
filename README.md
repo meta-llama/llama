@@ -1,6 +1,6 @@
 # Llama 2
 
-We are unlocking the power of large language models. Our latest version of Llama is now accessible to individuals, creators, researchers and businesses of all sizes so that they can experiment, innovate and scale their ideas responsibly. 
+We're empowering individuals, creators, researchers, and businesses of all sizes with access to the latest version of Llama. Our goal is to inspire innovation and responsible scaling, making it easy for you to unlock the full potential of large language models.
 
 This release includes model weights and starting code for pretrained and fine-tuned Llama language models — ranging from 7B to 70B parameters.
 
