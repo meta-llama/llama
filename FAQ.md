@@ -73,3 +73,26 @@ You can adapt the finetuning script found [here](https://github.com/facebookrese
 **Q: Am I allowed a develop derivative models through fine-tuning based on Llama 2 for languages other than english? Is this a violation of the acceptable use policy?**
 
 A: Developers may fine-tune Llama 2 models for languages beyond English provided they comply with the Llama 2 Community License and the Acceptable Use Policy.
+
+**Q: What OS is currently supproted?**
+
+A: 
+Linux is the only OS currently supported by the code availabe in this repo. 
+
+**Q Getting an error with download script**
+   ```
+   download.sh: 14: [[: not found
+   ```
+
+A:
+Make sure to run the command as follows 
+
+    ```./download.sh```
+
+**Q: Issue with the URL**
+    ```
+    HTTP request sent, awaiting response... 400 Bad Request
+    ```
+A:
+The issue occurs because of not copying the URL correctly. If you right click on the link and copy the link, the link may be copied with url defence wrapper.
+To avoid this problem, please select the url manually and copy it
