@@ -74,12 +74,12 @@ You can adapt the finetuning script found [here](https://github.com/facebookrese
 
 A: Developers may fine-tune Llama 2 models for languages beyond English provided they comply with the Llama 2 Community License and the Acceptable Use Policy.
 
-**Q: What OS is currently supproted?**
+**Q: What operating systems (OS) are officially supported?**
 
 A: 
-Linux is the only OS currently supported by the code availabe in this repo. 
+Linux is the only OS currently supported by this repo. 
 
-**Q: Getting an error with download script**
+**Q: I am getting the following error with download script. What should I do?**
 
    ```
    download.sh: 14: [[: not found
@@ -92,7 +92,7 @@ Make sure to run the command as follows
 ./download.sh
 ```
 
-**Q: Issue with the URL**
+**Q: I am getting "Issue with the URL" as an error message. What do I do?**
 ```
     HTTP request sent, awaiting response... 400 Bad Request
 ```
