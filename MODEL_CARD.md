@@ -12,7 +12,7 @@ Meta developed and released the Llama 2 family of large language models (LLMs), 
 
 **Model Architecture** Llama 2 is an auto-regressive language model that uses an optimized transformer architecture. The tuned versions use supervised fine-tuning (SFT) and reinforcement learning with human feedback (RLHF) to align with human preferences for helpfulness and safety.
 
-||Training Data|Params|Content Length|GQA|Tokens|LR|
+||Training Data|Params|Context Length|GQA|Tokens|LR|
 |---|---|---|---|---|---|---|
 Llama 2|*A new mix of publicly available online data*|7B|4k|&#10007;|2.0T|3.0 x 10<sup>-4</sup>
 Llama 2|*A new mix of publicly available online data*|13B|4k|&#10007;|2.0T|3.0 x 10<sup>-4</sup>
