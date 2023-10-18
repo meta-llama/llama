@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-**Before submitting a bug, please make sure the issue hasn't been already addressed by searching through the [existing and past issues](https://github.com/facebookresearch/llama/issues)**
+**Before submitting a bug, please make sure the issue hasn't been already addressed by searching through the [FAQs](https://github.com/facebookresearch/llama/blob/main/FAQ.md) and [existing/past issues](https://github.com/facebookresearch/llama/issues)**
 
 ## Describe the bug
 Please provide a clear and concise description of what the bug is. If relevant, please include a _minimal_ (least lines of code necessary) _reproducible_ (running this will give us the same result as you get) code snippet. Make sure to include the relevant imports.
