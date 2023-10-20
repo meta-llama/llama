@@ -100,3 +100,8 @@ Make sure to run the command as follows
 A:
 The issue occurs because of not copying the URL correctly. If you right click on the link and copy the link, the link may be copied with url defence wrapper.
 To avoid this problem, please select the url manually and copy it
+
+
+**Q: What GPU can I use to run the code in this repository?**
+
+A: The code in this repository supports only NVIDIA GPUs.
