@@ -104,4 +104,4 @@ To avoid this problem, please select the url manually and copy it
 
 **Q: What GPU can I use to run the code in this repository?**
 
-A: The code in this repository supports only NVIDIA GPUs.
+A: The code in this repository only supports NVIDIA GPUs.
