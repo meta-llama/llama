@@ -57,6 +57,7 @@ torchrun --nproc_per_node 1 example_chat_completion.py \
 - The `–nproc_per_node` should be set to the [MP](#inference) value for the model you are using.
 - Adjust the `max_seq_len` and `max_batch_size` parameters as needed.
 - This example runs the [example_chat_completion.py](example_chat_completion.py) found in this repository but you can change that to a different .py file.
+- At this time the code in this repository only supports a **Linux Operating System with a NVIDIA GPU**.
 
 ## Inference
 
