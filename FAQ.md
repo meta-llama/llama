@@ -104,4 +104,4 @@ To avoid this problem, please select the url manually and copy it
 
 **Q: What GPU can I use to run the code in this repository?**
 
-A: The code in this repository only supports NVIDIA GPUs.
+A: The code in this repository only supports NVIDIA GPUs. While hardware requirements vary based on latency, throughput and cost constraints, good performance was observed when the models were split across multiple GPUs with tensor parallelism in a machine with NVIDIA A100s or H100s. But other types of GPUs like A10G, T4, L4, or even commodity hardware can also be used to deploy these models (e.g. https://github.com/ggerganov/llama.cpp).
