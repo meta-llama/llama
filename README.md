@@ -8,7 +8,7 @@ This repository is intended as a minimal example to load [Llama 2](https://ai.me
 
 ## Updates post-launch
 
-See [UPDATES.md](UPDATES.md). Also for a running list of frequently asked questions, see [here](https://github.com/facebookresearch/llama/blob/main/FAQ.md).
+See [UPDATES.md](UPDATES.md). Also for a running list of frequently asked questions, see [here](https://ai.meta.com/llama/faq/).
 
 ## Download
 
