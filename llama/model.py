@@ -15,6 +15,11 @@ from fairscale.nn.model_parallel.layers import (
 )
 from torch import nn
 
+try:
+    from xformers.ops import (memory_efficient_attention, LowerTriangularMask)
+except ImportError:
+    memory_efficient_attention = None
+    LowerTriangularMask = None
 
 @dataclass
 class ModelArgs:
@@ -250,6 +255,43 @@ class Attention(nn.Module):
             )
         ).cuda()
 
+    def _attention(self, xq, keys, values, mask=None):
+        bsz, seqlen = xq.shape[0], xq.shape[1]
+
+        xq = xq.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
+        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
+        if mask is not None:
+            scores = scores + mask  # (bs, n_local_heads, slen, cache_len + slen)
+        scores = F.softmax(scores.float(), dim=-1).type_as(xq)
+        output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
+        output = output.transpose(
+            1, 2
+        ).contiguous().view(bsz, seqlen, -1)
+
+        return output
+    
+    def _memory_efficient_attention(self, xq, keys, values, mask=None):
+        bsz, seqlen = xq.shape[0], xq.shape[1]
+
+        if torch.is_inference_mode_enabled():
+            # Inference mode use default lower triangular mask
+            # In this case we can invoke flash attention for better performance
+            attn_bias=LowerTriangularMask()
+        else:
+            # Tranining mode use customized mask
+            # Maximize the flexibility for different kinds of mask
+            attn_bias=mask
+
+        output = memory_efficient_attention(
+                xq, keys, values,
+                attn_bias=attn_bias,
+                )
+
+        output = output.contiguous().view(bsz, seqlen, -1)
+        return output
+
     def forward(
         self,
         x: torch.Tensor,
@@ -292,15 +334,11 @@ class Attention(nn.Module):
         keys = repeat_kv(keys, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
         values = repeat_kv(values, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
 
-        xq = xq.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim)
-        keys = keys.transpose(1, 2)
-        values = values.transpose(1, 2)
-        scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
-        if mask is not None:
-            scores = scores + mask  # (bs, n_local_heads, seqlen, cache_len + seqlen)
-        scores = F.softmax(scores.float(), dim=-1).type_as(xq)
-        output = torch.matmul(scores, values)  # (bs, n_local_heads, seqlen, head_dim)
-        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
+        if memory_efficient_attention:
+            output = self._memory_efficient_attention(xq, keys, values, mask)
+        else:
+            output = self._attention(xq, keys, values, mask)
+
         return self.wo(output)
 
 
