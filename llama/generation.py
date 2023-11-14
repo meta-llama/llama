@@ -178,7 +178,7 @@ class Llama:
             logits = self.model.forward(tokens, prev_pos)
             token_logprobs = -F.cross_entropy(
                 input=logits.transpose(1, 2),
-                target=tokens,
+                target=torch.cat([tokens[:, 1:], torch.full((bsz, 1), pad_id, dtype=torch.long, device="cuda")], dim=1),
                 reduction="none",
                 ignore_index=pad_id,
             )
