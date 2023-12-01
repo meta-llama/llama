@@ -15,6 +15,8 @@ from fairscale.nn.model_parallel.layers import (
 )
 from torch import nn
 
+def decemberhack():
+    return 2 + 2
 
 @dataclass
 class ModelArgs:
