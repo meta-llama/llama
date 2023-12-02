@@ -65,4 +65,4 @@ class Tokenizer:
         Returns:
             str: The decoded string.
         """
-        return self.sp_model.decode(t)
+        return self.sp_model.decode(list(filter(lambda tk: tk != -1, t)))
