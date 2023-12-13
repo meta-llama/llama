@@ -85,6 +85,7 @@ def run_batch_inference(dataloader, model):
         __get_next_batch, dataloader)
 
     device = get_device()
+    print("x: ", x)
     x = x.to(device)
     # y = y.to(device)
 
