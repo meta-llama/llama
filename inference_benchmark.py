@@ -6,12 +6,6 @@ import fire
 import os
 import torch.distributed as dist
 
-### Enabling parallel
-os.environ['RANK'] = '0'  # Set the rank of the process
-os.environ['WORLD_SIZE'] = '1'  # Set the total number of processes
-
-dist.init_process_group(backend='nccl')  # Initialize the process group
-
 ### Setup ###
 BATCH_SIZE = 1
 BATCH_COUNT = 5
@@ -28,29 +22,11 @@ DEVICE_CPU = 'cpu'
 from llama import Llama
 from typing import List
 
-prompts: List[str] = [
-    # For these prompts, the expected answer is the natural continuation of the prompt
-    "I believe the meaning of life is",
-    "Simply put, the theory of relativity states that ",
-    """A brief message congratulating the team on the launch:
-
-    Hi everyone,
-    
-    I just """,
-    # Few shot prompt (providing a few examples before asking model to complete more);
-    """Translate English to French:
-    
-    sea otter => loutre de mer
-    peppermint => menthe poivrée
-    plush girafe => girafe peluche
-    cheese =>""",
-]
-
 def get_device():
     return torch.device(DEVICE_CUDA if torch.cuda.is_available() else DEVICE_CPU)
 
 def get_data_loader(num_workers=1):
-    dataset = load_dataset("HuggingFaceH4/no_robots")
+    dataset = load_dataset("HuggingFaceH4/no_robots")['test_sft']
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,
