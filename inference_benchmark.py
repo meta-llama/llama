@@ -52,7 +52,7 @@ def run_benchmark(dataloader, model):
     total_time_per_batch = torch.zeros(BATCH_COUNT)
     
     device = get_device()
-    model.to(device)
+    # model.to(device)
     print("Working on device: {}".format(device))
     
     
