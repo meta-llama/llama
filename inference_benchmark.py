@@ -98,7 +98,7 @@ def run_batch_inference(dataloader, model):
     output, inference_time = measure_runtime(
         inference,
         model,
-        question)
+        [question])
     
     return output, load_time, inference_time
 
