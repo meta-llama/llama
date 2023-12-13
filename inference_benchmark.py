@@ -7,7 +7,7 @@ import os
 import torch.distributed as dist
 
 ### Setup ###
-BATCH_SIZE = 3
+BATCH_SIZE = 1
 BATCH_COUNT = 5
 NUM_WORKERS = 1
 
@@ -88,9 +88,9 @@ def run_batch_inference(dataloader, model):
         __get_next_batch, dataloader)
 
     
-    print("question: ", question, "answer", answer)
-    print("question type: ", type(question), "answer type", type(answer))
-    print("question shape: ", len(question), "answer shape", answer.shape)
+    # print("question: ", question, "\nanswer: ", answer)
+    # print("question type: ", type(question), "answer type", type(answer))
+    # print("question shape: ", len(question), "answer shape", len(answer))
     # device = get_device()
     # x = x.to(device)
     # y = y.to(device)
