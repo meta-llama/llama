@@ -10,6 +10,7 @@ import torch.distributed as dist
 BATCH_SIZE = 1
 BATCH_COUNT = 5
 NUM_WORKERS = 1
+HUGGING_FACE_GSMK_DATASET_ID = "gsm8k"
 
 # Manual seed for reproducatibility
 SEED = 42
@@ -26,7 +27,7 @@ def get_device():
     return torch.device(DEVICE_CUDA if torch.cuda.is_available() else DEVICE_CPU)
 
 def get_data_loader(num_workers=1):
-    dataset = load_dataset("HuggingFaceH4/no_robots")['test_sft']
+    dataset = load_dataset(HUGGING_FACE_GSMK_DATASET_ID)['train']
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,
@@ -81,18 +82,19 @@ def measure_runtime(func, *func_args):
 
 
 def run_batch_inference(dataloader, model):
-    x, load_time = measure_runtime(
+    (question, answer), load_time = measure_runtime(
         __get_next_batch, dataloader)
 
-    device = get_device()
-    print("x: ", x)
-    x = x.to(device)
+    
+    print("question: ", question, "answer", answer)
+    # device = get_device()
+    # x = x.to(device)
     # y = y.to(device)
 
     output, inference_time = measure_runtime(
         inference,
         model,
-        x)
+        question)
     
     return output, load_time, inference_time
 
