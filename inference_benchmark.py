@@ -3,6 +3,14 @@ from torch.utils.data import DataLoader
 import time
 from datasets import load_dataset
 import fire
+import os
+import torch.distributed as dist
+
+### Enabling parallel
+os.environ['RANK'] = '0'  # Set the rank of the process
+os.environ['WORLD_SIZE'] = '1'  # Set the total number of processes
+
+dist.init_process_group(backend='nccl')  # Initialize the process group
 
 ### Setup ###
 BATCH_SIZE = 1
