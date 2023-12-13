@@ -27,7 +27,7 @@ def get_device():
     return torch.device(DEVICE_CUDA if torch.cuda.is_available() else DEVICE_CPU)
 
 def get_data_loader(num_workers=1):
-    dataset = load_dataset(HUGGING_FACE_GSMK_DATASET_ID)['train']
+    dataset = load_dataset(HUGGING_FACE_GSMK_DATASET_ID, 'main')['train']
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,
