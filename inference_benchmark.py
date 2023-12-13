@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 import time
 from datasets import load_dataset
+import fire
 
 ### Setup ###
 BATCH_SIZE = 1
@@ -132,14 +133,17 @@ def __get_next_batch(dataloader):
     return next(iter(dataloader))
 
 
-def benchmark():
+def benchmark(ckpt_dir, 
+              tokenizer_path, 
+              max_seq_len, 
+              max_batch_size):
     print("Starting up...")
 
     print("Building data loaders...")
     data_loader = get_data_loader()
 
     print("Initializing Model...")
-    net = get_model()
+    net = get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size)
 
     print("Running inference benchmark...\n")
     _, load, inference, total = run_benchmark(data_loader, net)
@@ -156,4 +160,4 @@ def benchmark():
     print("> average", torch.mean(total))
 
 if __name__ == "__main__":
-    benchmark()
+    fire.Fire(benchmark)
