@@ -6,7 +6,7 @@ import fire
 from torch.profiler import profile, record_function, ProfilerActivity
 
 ### Setup ###
-BATCH_SIZE = 1
+BATCH_SIZE = 16
 BATCH_COUNT = 5
 NUM_WORKERS = 1
 PROFILE_MEMORY = True
@@ -28,11 +28,11 @@ from typing import List
 def get_device():
     return torch.device(DEVICE_CUDA if torch.cuda.is_available() else DEVICE_CPU)
 
-def get_data_loader(num_workers=1):
+def get_data_loader(num_workers, batch_size):
     dataset = load_dataset(HUGGING_FACE_GSMK_DATASET_ID, 'main')['train']
     dataloader = DataLoader(
         dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers
     )
@@ -125,11 +125,13 @@ def __get_next_batch(dataloader):
 def benchmark(ckpt_dir, 
               tokenizer_path, 
               max_seq_len, 
-              max_batch_size):
+              max_batch_size,
+              batch_size=BATCH_SIZE,
+              num_workers=NUM_WORKERS):
     print("Starting up...")
 
     print("Building data loaders...")
-    data_loader = get_data_loader()
+    data_loader = get_data_loader(num_workers)
 
     print("Initializing Model...")
     net = get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size)
