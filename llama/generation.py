@@ -121,7 +121,7 @@ class Llama:
         
         model.qconfig = torch.ao.quantization.default_qconfig # quantization
         torch.ao.quantization.prepare(model, inplace=True)
-
+        torch.ao.quantization.convert(model, inplace=True)
         
         model.load_state_dict(checkpoint, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
