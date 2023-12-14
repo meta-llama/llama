@@ -117,7 +117,7 @@ class Llama:
         model_args.vocab_size = tokenizer.n_words
         torch.set_default_tensor_type(torch.cuda.HalfTensor)
         model = Transformer(model_args).eval() # quantization
-        model.fuse_model() # quantization
+        #model.fuse_model() # quantization
         
         model.qconfig = torch.ao.quantization.default_qconfig # quantization
         torch.ao.quantization.prepare(model, inplace=True)
