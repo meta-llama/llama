@@ -131,7 +131,7 @@ def benchmark(ckpt_dir,
     print("Starting up...")
 
     print("Building data loaders...")
-    data_loader = get_data_loader(num_workers)
+    data_loader = get_data_loader(num_workers, batch_size)
 
     print("Initializing Model...")
     net = get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size)
