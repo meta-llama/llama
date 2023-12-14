@@ -57,7 +57,7 @@ def script_model(ckpt_dir,
               max_seq_len, 
               max_batch_size):
     print("Starting up...")
-    torch.cuda.reset()
+    # torch.cuda.reset()
     torch.cuda.empty_cache()
     print("Initializing Model...")
     llama = get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size)
