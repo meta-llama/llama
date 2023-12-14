@@ -141,8 +141,8 @@ def benchmark(ckpt_dir,
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=PROFILE_MEMORY) as prof:
         with record_function("run_benchmark"):
             _, load, inference, total = run_benchmark(data_loader, net)
-        profile_cuda_time = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
-        profile_cuda_mem = prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10)
+    profile_cuda_time = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
+    profile_cuda_mem = prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10)
     
     print("\n\n Manual Profile Results...")
     print("Data-loading times")
