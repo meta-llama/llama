@@ -5,6 +5,7 @@ from datasets import load_dataset
 import fire
 import os
 import torch.distributed as dist
+from torch.profiler import profile, record_function, ProfilerActivity
 
 ### Setup ###
 BATCH_SIZE = 1
@@ -151,4 +152,11 @@ def benchmark(ckpt_dir,
     print("> average", torch.mean(total))
 
 if __name__ == "__main__":
-    fire.Fire(benchmark)
+    with profile(activities=[ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
+        with record_function("benchmark"):
+            fire.Fire(benchmark)
+    print("Profiling sorted by CUDA time total")
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    print("\n\n")
+    print("Profiling sorted by CUDA memory usage")
+    print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
