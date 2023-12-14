@@ -152,7 +152,7 @@ def benchmark(ckpt_dir,
     print("> average", torch.mean(total))
 
 if __name__ == "__main__":
-    with profile(activities=[ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
+    with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
         with record_function("benchmark"):
             fire.Fire(benchmark)
         profile_cuda_time = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
