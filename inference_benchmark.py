@@ -3,8 +3,6 @@ from torch.utils.data import DataLoader
 import time
 from datasets import load_dataset
 import fire
-import os
-import torch.distributed as dist
 from torch.profiler import profile, record_function, ProfilerActivity
 
 ### Setup ###
