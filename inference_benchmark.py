@@ -40,12 +40,12 @@ def get_data_loader(num_workers=1):
 
 
 def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
-    generator = torch.jit.trace(Llama.build(
+    generator = Llama.build(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
-    ))
+    )
     return generator
 
 
