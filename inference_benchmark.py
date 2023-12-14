@@ -139,9 +139,9 @@ def benchmark(ckpt_dir,
     print("Running inference benchmark...\n")
     
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=PROFILE_MEMORY) as prof:
-        # with record_function("run_benchmark"):
+        with record_function("run_benchmark"):
         #     _, load, inference, total = run_benchmark(data_loader, net)
-        _, load, inference, total = run_benchmark(data_loader, net)
+            _, load, inference, total = run_benchmark(data_loader, net)
     
     print("\n\n Manual Profile Results...")
     print("Data-loading times")
@@ -166,5 +166,5 @@ def benchmark(ckpt_dir,
 
 
 if __name__ == "__main__":
-    torch.cuda.empty_cache()
+    # torch.cuda.empty_cache()
     fire.Fire(benchmark)
