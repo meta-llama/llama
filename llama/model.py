@@ -430,6 +430,8 @@ class Transformer(nn.Module):
 
         """
         super().__init__()
+        # quantization
+        self.quant = torch.ao.quantization.QuantStub()
         self.params = params
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
@@ -452,6 +454,9 @@ class Transformer(nn.Module):
             # Adding this multiplier instead of using 4096 directly allows for dynamism of token lengths while training or fine-tuning.
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
+        # quantization
+        self.dequant = torch.ao.quantization.DeQuantStub()
+
 
     @torch.inference_mode()
     def forward(self, tokens: torch.Tensor, start_pos: int):
@@ -492,4 +497,6 @@ class Transformer(nn.Module):
             h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)
         output = self.output(h).float()
+        # quantization
+        output = self.dequant(output)
         return output
