@@ -5,6 +5,10 @@ from datasets import load_dataset
 import fire
 from torch.profiler import profile, record_function, ProfilerActivity
 
+
+from llama import Llama
+from typing import List
+
 ### Setup ###
 BATCH_SIZE = 1
 BATCH_COUNT = 5
@@ -22,8 +26,6 @@ torch.cuda.manual_seed(SEED)
 DEVICE_CUDA = 'cuda'
 DEVICE_CPU = 'cpu'
 
-from llama import Llama
-from typing import List
 
 def get_device():
     return torch.device(DEVICE_CUDA if torch.cuda.is_available() else DEVICE_CPU)
