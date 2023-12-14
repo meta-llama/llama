@@ -1,3 +1,7 @@
+llama-2-7b/
+tokenizer.model
+tokenizer_checklist.chk
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
