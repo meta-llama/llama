@@ -9,7 +9,7 @@ from torch.profiler import profile, record_function, ProfilerActivity
 BATCH_SIZE = 1
 BATCH_COUNT = 5
 NUM_WORKERS = 1
-PROFILE_MEMORY = False
+PROFILE_MEMORY = True
 
 # https://huggingface.co/datasets/gsm8k
 HUGGING_FACE_GSMK_DATASET_ID = "gsm8k"
@@ -140,8 +140,6 @@ def benchmark(ckpt_dir,
         # with record_function("run_benchmark"):
         #     _, load, inference, total = run_benchmark(data_loader, net)
         _, load, inference, total = run_benchmark(data_loader, net)
-    profile_cuda_time = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
-    profile_cuda_mem = prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10)
     
     print("\n\n Manual Profile Results...")
     print("Data-loading times")
@@ -156,9 +154,12 @@ def benchmark(ckpt_dir,
 
     print("\n\n")
     print("Profiling sorted by CUDA time total")
+    profile_cuda_time = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
     print(profile_cuda_time)
+
     print("\n\n")
     print("Profiling sorted by CUDA memory usage")
+    profile_cuda_mem = prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10)
     print(profile_cuda_mem)
 
 
