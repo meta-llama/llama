@@ -155,8 +155,8 @@ if __name__ == "__main__":
     with profile(activities=[ProfilerActivity.CUDA], record_shapes=True, profile_memory=True) as prof:
         with record_function("benchmark"):
             fire.Fire(benchmark)
-    print("Profiling sorted by CUDA time total")
-    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-    print("\n\n")
-    print("Profiling sorted by CUDA memory usage")
-    print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
+        print("Profiling sorted by CUDA time total")
+        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+        print("\n\n")
+        print("Profiling sorted by CUDA memory usage")
+        print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
