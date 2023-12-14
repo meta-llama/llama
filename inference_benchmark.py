@@ -109,16 +109,14 @@ def inference(
     top_p: float = 0.9,
     max_gen_len: int = 64,
 ):
-    results = generator.text_completion(
-        prompts,
-        max_gen_len=max_gen_len,
-        temperature=temperature,
-        top_p=top_p,
-    )
-    for prompt, result in zip(prompts, results):
-        print(prompt)
-        print(f"> {result['generation']}")
-        print("\n==================================\n")
+    with torch.no_grad():
+        results = generator.text_completion(
+            prompts,
+            max_gen_len=max_gen_len,
+            temperature=temperature,
+            top_p=top_p,
+        )
+        return zip(prompts, results)
 
 def __get_next_batch(dataloader):
     return next(iter(dataloader))
@@ -139,8 +137,9 @@ def benchmark(ckpt_dir,
     print("Running inference benchmark...\n")
     
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=PROFILE_MEMORY) as prof:
-        with record_function("run_benchmark"):
-            _, load, inference, total = run_benchmark(data_loader, net)
+        # with record_function("run_benchmark"):
+        #     _, load, inference, total = run_benchmark(data_loader, net)
+        _, load, inference, total = run_benchmark(data_loader, net)
     profile_cuda_time = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
     profile_cuda_mem = prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10)
     
