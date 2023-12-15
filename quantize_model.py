@@ -28,16 +28,16 @@ def quantize_model(model):
 
 
 def main():
-    model = get_model("llama-2-7b/", "tokenizer.model", 512, 1)
+    llama = get_model("llama-2-7b/", "tokenizer.model", 512, 1)
     print("model size before in-place quantization")
-    print_model_size(model)
+    print_model_size(llama.model)
 
-    quantize_model(model)
+    quantize_model(llama.model)
     print("model size after in-place quantization")
-    print_model_size(model)
+    print_model_size(llama.model)
 
     # save the quantized model
-    torch.save(model.state_dict(), "quantized_model.pt")
+    torch.save(llama.model.state_dict(), "quantized_model.pt")
 
 if __name__ == "__main__":
     fire.Fire(main)
