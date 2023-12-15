@@ -1,9 +1,12 @@
 import torch
-from torch.utils.data import DataLoader
+from gsmk_dataset import get_data_loader
 import time
-from datasets import load_dataset
 import fire
 from torch.profiler import profile, record_function, ProfilerActivity
+
+
+from llama import Llama
+from typing import List
 
 ### Setup ###
 BATCH_SIZE = 16
@@ -22,22 +25,9 @@ torch.cuda.manual_seed(SEED)
 DEVICE_CUDA = 'cuda'
 DEVICE_CPU = 'cpu'
 
-from llama import Llama
-from typing import List
 
 def get_device():
     return torch.device(DEVICE_CUDA if torch.cuda.is_available() else DEVICE_CPU)
-
-def get_data_loader(num_workers, batch_size):
-    dataset = load_dataset(HUGGING_FACE_GSMK_DATASET_ID, 'main')['train']
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers
-    )
-    return dataloader
-
 
 def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
     generator = Llama.build(
