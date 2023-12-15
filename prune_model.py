@@ -32,6 +32,7 @@ def calculate_model_sparsity(llama):
         
     return num_zeros/total_params
 
+
 def prune_model(llama):
     transformer = llama.model
     
@@ -42,10 +43,19 @@ def prune_model(llama):
         if idx > 10:
             break
         # prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
-        prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
+        # prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
         # prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
         # prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
         # prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
+
+        prune_model_inner(transformer_block, name="attn_norm_w", amount=0.3)
+        prune_model_inner(transformer_block.attention.wq, name="weight", amount=0.3)
+        prune_model_inner(transformer_block.attention.wk, name="weight", amount=0.3)
+        prune_model_inner(transformer_block.attention.wv, name="weight", amount=0.3)
+        prune_model_inner(transformer_block.attention.wo, name="weight", amount=0.3)
+
+def prune_model_inner(module, name, amount):
+    prune.random_unstructured(module, name=name, amount=amount)
 
 def main():
     llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
