@@ -56,6 +56,7 @@ def prune_model(llama):
     for idx, transformer_block in enumerate(transformer.layers):
         check_mem()
         print(f'pruning layer {idx}')
+        torch.cuda.empty_cache()
         if idx > 5:
             break
         # prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
@@ -77,9 +78,11 @@ def main():
     llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
     check_mem()
     init_sparsity = calculate_model_sparsity(llama)
+    torch.cuda.empty_cache()
     check_mem()
     print(f'init_sparsity = {init_sparsity}')
     prune_model(llama)
+    torch.cuda.empty_cache()
     check_mem()
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
