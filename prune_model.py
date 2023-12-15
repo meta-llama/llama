@@ -4,21 +4,21 @@ import fire
 import torch
 import torch.nn.utils.prune as prune
 
-import nvidia_smi
+# import nvidia_smi
 
-def check_mem():
-    nvidia_smi.nvmlInit()
+# def check_mem():
+#     nvidia_smi.nvmlInit()
 
-    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
-    # card id 0 hardcoded here, there is also a call to get all available card ids, so we could iterate
+#     handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
+#     # card id 0 hardcoded here, there is also a call to get all available card ids, so we could iterate
 
-    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+#     info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
 
-    print("Total memory:", info.total)
-    print("Free memory:", info.free)
-    print("Used memory:", info.used)
+#     print("Total memory:", info.total)
+#     print("Free memory:", info.free)
+#     print("Used memory:", info.used)
 
-    nvidia_smi.nvmlShutdown()
+#     nvidia_smi.nvmlShutdown()
 
 def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
     generator = Llama.build(
@@ -51,7 +51,7 @@ def prune_model(llama):
     print(f'model type = {type(llama.model)}')
     
     for idx, transformer_block in enumerate(llama.model.layers):
-        check_mem()
+        # check_mem()
         print(f'pruning layer {idx}')
         torch.cuda.empty_cache()
         if idx > 5:
