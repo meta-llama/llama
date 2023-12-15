@@ -3,6 +3,7 @@ import torch
 from llama import Llama
 import fire
 from gsmk_dataset import get_data_loader
+import torch
 import torch.nn.utils.prune as prune
     
 backend = "qnnpack"
@@ -34,9 +35,13 @@ def prune_model(llama):
         #import torch.nn.utils.prune as prune
 
         # Assuming you have a TransformerBlock object named 'layer'
-        sparsity = prune.sparsity(layer)
+        num_zeros = torch.sum(layer.weight == 0).item()
+        total_params = layer.weight.numel()
+        sparsity = num_zeros / total_params
         print(f"Sparsity of the TransformerBlock (before pruning): {sparsity}")
         model.layer = prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
+        num_zeros = torch.sum(layer.weight == 0).item()
+        sparsity = num_zeros / total_params
         print(f"Sparsity of the TransformerBlock (after pruning): {sparsity}")
         # prune.l1_unstructured(layer, name="bias", amount=3)
     
