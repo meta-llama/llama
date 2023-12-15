@@ -24,26 +24,29 @@ def prune_model(llama):
     before_num_zeros = 0
     after_num_zeros = 0
     for idx, transformer_block in enumerate(transformer.layers):
+        print("shape of weights before pruning: ", transformer_block.attention.wq.weight.shape)
+        print("shape of weights before pruning: ", transformer_block.attention.wk.weight.shape)
+        print("shape of weights before pruning: ", transformer_block.attention.wv.weight.shape)
+        print("shape of weights before pruning: ", transformer_block.attention_norm.weight.shape)
         before_total_weights = transformer_block.attention.wq.weight + transformer_block.attention.wk.weight + transformer_block.attention.wv.weight + transformer_block.attention_norm.weight + transformer_block.ffn_norm.weight
-        
+        print("shape of weights before pruning: ", before_total_weights.shape)
 
         before_num_zeros += torch.sum(before_total_weights == 0).item()
         
         total_params += before_total_weights.numel()
         
-        layer=prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
+        layer=prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
         
         after_total_weights = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight + layer.attention_norm.weight + layer.ffn_norm.weight
         
         after_num_zeros += torch.sum(after_total_weights == 0).item()        
 
-        if idx % 10**6 == 0:
+        if idx % 10**2 == 0:
             print(f'before_total_weights = {before_total_weights}')
             print(f'before_num_zeros = {before_num_zeros}')
             print(f'after_total_weights = {after_total_weights}')
             print(f'after_num_zeros = {after_num_zeros}')
             print(f'total_params = {total_params}')
-
             print(f'we are {idx} layers in')
 
     print(f'before_total_weights = {before_total_weights}')
