@@ -39,10 +39,12 @@ def prune_model(llama):
     
     for idx, transformer_block in enumerate(transformer.layers):
         print(f'pruning layer {idx}')
+        if idx > 10:
+            break
         # prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
         prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
-        prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
-        prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
+        # prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
+        # prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
         # prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
 
 def main():
