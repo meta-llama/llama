@@ -39,7 +39,7 @@ def prune_model(llama):
     
     for transformer_block in enumerate(transformer.layers):
         
-        prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
+        # prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
         prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
         prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
         prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
