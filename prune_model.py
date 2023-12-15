@@ -40,7 +40,7 @@ def prune_model(llama):
         #total_params = layer.weight.numel()
         #sparsity = num_zeros / total_params
         #print(f"Sparsity of the TransformerBlock (before pruning): {sparsity}")
-        attention_w = layer.attention.wq + layer.attention.wk + layer.attention.wv
+        attention_w = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight
         att_norm_w = layer.attention_norm.weight
         ffn_norm_w = layer.ffn_norm.weight
         total_weights = attention_w + att_norm_w + ffn_norm_w
