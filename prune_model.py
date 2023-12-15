@@ -28,7 +28,13 @@ def prune_model(llama):
         print("shape of weights before pruning: ", transformer_block.attention.wk.weight.shape)
         print("shape of weights before pruning: ", transformer_block.attention.wv.weight.shape)
         print("shape of weights before pruning: ", transformer_block.attention_norm.weight.shape)
-        before_total_weights = transformer_block.attention.wq.weight + transformer_block.attention.wk.weight + transformer_block.attention.wv.weight + transformer_block.attention_norm.weight + transformer_block.ffn_norm.weight
+        # flatten all weights and append into one tensor
+        before_total_weights = torch.cat(
+            (transformer_block.attention.wq.weight.flatten(), 
+            transformer_block.attention.wk.weight.flatten(), 
+            transformer_block.attention.wv.weight.flatten(), 
+            transformer_block.attention_norm.weight.flatten(), 
+            transformer_block.ffn_norm.weight.flatten()), 0)
         print("shape of weights before pruning: ", before_total_weights.shape)
 
         before_num_zeros += torch.sum(before_total_weights == 0).item()
@@ -37,8 +43,13 @@ def prune_model(llama):
         
         layer=prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
         
-        after_total_weights = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight + layer.attention_norm.weight + layer.ffn_norm.weight
-        
+        # flatten all weights and append into one tensor
+        after_total_weights = torch.cat(
+            (layer.attention.wq.weight.flatten(), 
+            layer.attention.wk.weight.flatten(), 
+            layer.attention.wv.weight.flatten(), 
+            layer.attention_norm.weight.flatten(), 
+            layer.ffn_norm.weight.flatten()), 0)
         after_num_zeros += torch.sum(after_total_weights == 0).item()        
 
         if idx % 10**2 == 0:
