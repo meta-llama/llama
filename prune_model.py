@@ -4,6 +4,21 @@ import fire
 import torch
 import torch.nn.utils.prune as prune
 
+import nvidia_smi
+
+def check_mem():
+    nvidia_smi.nvmlInit()
+
+    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
+    # card id 0 hardcoded here, there is also a call to get all available card ids, so we could iterate
+
+    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+
+    print("Total memory:", info.total)
+    print("Free memory:", info.free)
+    print("Used memory:", info.used)
+
+    nvidia_smi.nvmlShutdown()
 
 def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
     generator = Llama.build(
@@ -39,6 +54,7 @@ def prune_model(llama):
     print(f'model type = {type(transformer)}')
     
     for idx, transformer_block in enumerate(transformer.layers):
+        check_mem()
         print(f'pruning layer {idx}')
         if idx > 5:
             break
@@ -59,9 +75,12 @@ def prune_model_inner(module, name, amount):
 
 def main():
     llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
+    check_mem()
     init_sparsity = calculate_model_sparsity(llama)
+    check_mem()
     print(f'init_sparsity = {init_sparsity}')
     prune_model(llama)
+    check_mem()
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
 
