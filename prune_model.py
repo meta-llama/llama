@@ -38,11 +38,11 @@ def prune_model(llama):
     print(f'model type = {type(transformer)}')
     
     for transformer_block in transformer.layers:
-        prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
+        # prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
         prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
-        prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
-        prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
-        prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
+        # prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
+        # prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
+        # prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
 
 def main():
     llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
