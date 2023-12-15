@@ -9,7 +9,7 @@ from llama import Llama
 from typing import List
 
 ### Setup ###
-BATCH_SIZE = 1
+BATCH_SIZE = 16
 BATCH_COUNT = 5
 NUM_WORKERS = 1
 PROFILE_MEMORY = True
@@ -115,11 +115,13 @@ def __get_next_batch(dataloader):
 def benchmark(ckpt_dir, 
               tokenizer_path, 
               max_seq_len, 
-              max_batch_size):
+              max_batch_size,
+              batch_size=BATCH_SIZE,
+              num_workers=NUM_WORKERS):
     print("Starting up...")
 
     print("Building data loaders...")
-    data_loader = get_data_loader()
+    data_loader = get_data_loader(num_workers, batch_size)
 
     print("Initializing Model...")
     net = get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size)
@@ -127,9 +129,9 @@ def benchmark(ckpt_dir,
     print("Running inference benchmark...\n")
     
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=PROFILE_MEMORY) as prof:
-        # with record_function("run_benchmark"):
+        with record_function("run_benchmark"):
         #     _, load, inference, total = run_benchmark(data_loader, net)
-        _, load, inference, total = run_benchmark(data_loader, net)
+            _, load, inference, total = run_benchmark(data_loader, net)
     
     print("\n\n Manual Profile Results...")
     print("Data-loading times")
@@ -154,4 +156,5 @@ def benchmark(ckpt_dir,
 
 
 if __name__ == "__main__":
+    # torch.cuda.empty_cache()
     fire.Fire(benchmark)
