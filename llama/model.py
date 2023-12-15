@@ -493,6 +493,7 @@ class Transformer(nn.Module):
                 mask
             ]).type_as(h)
 
+        h = self.quant(h)
         for layer in self.layers:
             h = layer(h, start_pos, freqs_cis, mask)
         h = self.norm(h)

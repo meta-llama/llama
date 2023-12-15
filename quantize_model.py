@@ -2,13 +2,15 @@ import os
 import torch
 from llama import Llama
 import fire
+from gsmk_dataset import get_data_loader
+    
+backend = "qnnpack"
 
 def print_model_size(mdl):
     torch.save(mdl.state_dict(), "tmp.pt")
     print("%.2f MB" %(os.path.getsize("tmp.pt")/1e6))
     os.remove('tmp.pt')
-    
-backend = "qnnpack"
+
 
 
 def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
@@ -21,9 +23,19 @@ def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
     return generator
 
 def quantize_model(model):
-    model.qconfig = torch.ao.quantization.default_qconfig
+    # setup quantization
+    model.eval()
+    model.qconfig = torch.ao.quantization.get_default_qconfig('x86')
     torch.backends.quantized.engine = backend
     torch.quantization.prepare(model, inplace=True)
+
+    # calibrate model to real world data
+    dataloader = get_data_loader(5, 0)
+    for i in range(10):
+        batch = next(iter(dataloader))
+        model(batch)
+
+    # convert in place
     torch.quantization.convert(model, inplace=True)
 
 
