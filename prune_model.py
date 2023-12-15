@@ -30,7 +30,7 @@ def prune_model(llama):
     
     # set up pruning:
     for layer in model.layers:
-        prune.random_unstructured(layer, name="attention", amount=0.3)
+        prune.random_unstructured(layer, name="attention_norm.weight", amount=0.3) # name is a torch.nn.Parameter
         #prune.l1_unstructured(layer, name="bias", amount=3)
         
     
