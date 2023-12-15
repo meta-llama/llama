@@ -31,8 +31,22 @@ def prune_model(llama):
     # set up pruning:
     for layer in model.layers: # each layer is a TransformerBlock
         # we only have nn.Parameter objects in RMSNorm class
-        prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
-        #prune.l1_unstructured(layer, name="bias", amount=3)
+        #import torch.nn.utils.prune as prune
+
+        # Assuming you have a TransformerBlock object named 'layer'
+        sparsity = prune.sparsity(layer)
+        print(f"Sparsity of the TransformerBlock (before pruning): {sparsity}")
+        model.layer = prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
+        print(f"Sparsity of the TransformerBlock (after pruning): {sparsity}")
+        # prune.l1_unstructured(layer, name="bias", amount=3)
+    
+    
+    """for i in range(len(model.layers)): # each layer is a TransformerBlock
+        # we only have nn.Parameter objects in RMSNorm class
+        model.layers[i] = prune.random_unstructured(model.layers[i], name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
+        # model.layer = prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
+        # prune.l1_unstructured(layer, name="bias", amount=3)
+    """
         
     
     
