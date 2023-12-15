@@ -43,9 +43,10 @@ def prune_model(llama):
         total_params += before_total_weights.numel()
         
         layer=prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
-        layer=prune.random_unstructured(transformer_block.attention, name="wq", amount=0.3)
-        layer=prune.random_unstructured(transformer_block.attention, name="wk", amount=0.3)
-        layer=prune.random_unstructured(transformer_block.attention, name="wv", amount=0.3)
+        layer=prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
+        layer=prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
+        layer=prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
+        layer=prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
         
         # flatten all weights and append into one tensor
         after_total_weights = torch.cat(
