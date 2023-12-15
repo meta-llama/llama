@@ -29,8 +29,9 @@ def prune_model(llama):
     print(f'model type = {type(model)}')
     
     # set up pruning:
-    for layer in model.layers:
-        prune.random_unstructured(layer, name="attention_norm.weight", amount=0.3) # name is a torch.nn.Parameter
+    for layer in model.layers: # each layer is a TransformerBlock
+        # we only have nn.Parameter objects in RMSNorm class
+        prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
         #prune.l1_unstructured(layer, name="bias", amount=3)
         
     
