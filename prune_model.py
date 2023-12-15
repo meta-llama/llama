@@ -30,20 +30,24 @@ def prune_model(llama):
     print(f'model type = {type(model)}')
     
     # set up pruning:
+    count = 0
     for layer in model.layers: # each layer is a TransformerBlock
         # we only have nn.Parameter objects in RMSNorm class
         #import torch.nn.utils.prune as prune
 
         # Assuming you have a TransformerBlock object named 'layer'
-        num_zeros = torch.sum(layer.weight == 0).item()
-        total_params = layer.weight.numel()
-        sparsity = num_zeros / total_params
-        print(f"Sparsity of the TransformerBlock (before pruning): {sparsity}")
+        #num_zeros = torch.sum(layer.weight == 0).item()
+        #total_params = layer.weight.numel()
+        #sparsity = num_zeros / total_params
+        #print(f"Sparsity of the TransformerBlock (before pruning): {sparsity}")
         model.layer = prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
-        num_zeros = torch.sum(layer.weight == 0).item()
-        sparsity = num_zeros / total_params
-        print(f"Sparsity of the TransformerBlock (after pruning): {sparsity}")
+        #num_zeros = torch.sum(layer.weight == 0).item()
+        #sparsity = num_zeros / total_params
+        #print(f"Sparsity of the TransformerBlock (after pruning): {sparsity}")
         # prune.l1_unstructured(layer, name="bias", amount=3)
+        count += 1
+        if count % 10**6 == 0:
+            print(f'we are {count} layers in')
     
     
     """for i in range(len(model.layers)): # each layer is a TransformerBlock
