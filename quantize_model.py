@@ -22,7 +22,8 @@ def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
     )
     return generator
 
-def quantize_model(model):
+def quantize_model(llama):
+    model = llama.model
     # setup quantization
     model.eval()
     model.qconfig = torch.ao.quantization.get_default_qconfig('x86')
@@ -31,9 +32,14 @@ def quantize_model(model):
 
     # calibrate model to real world data
     dataloader = get_data_loader(5, 0)
-    for i in range(10):
+    for _ in range(10):
         batch = next(iter(dataloader))
-        model(batch)
+        llama.text_completion(
+            batch,
+            max_gen_len=512,
+            temperature=0.6,
+            top_p=0.9,
+        )
 
     # convert in place
     torch.quantization.convert(model, inplace=True)
@@ -44,7 +50,7 @@ def main():
     print("model size before in-place quantization")
     print_model_size(llama.model)
 
-    quantize_model(llama.model)
+    quantize_model(llama)
     print("model size after in-place quantization")
     print_model_size(llama.model)
 
