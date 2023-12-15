@@ -432,7 +432,7 @@ class Transformer(nn.Module):
         """
         super().__init__()
         # quantization
-        self.quant = torch.ao.quantization.QuantStub()
+        # self.quant = torch.ao.quantization.QuantStub()
         self.params = params
         self.vocab_size = params.vocab_size
         self.n_layers = params.n_layers
@@ -456,7 +456,7 @@ class Transformer(nn.Module):
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
         # quantization
-        self.dequant = torch.ao.quantization.DeQuantStub()
+        # self.dequant = torch.ao.quantization.DeQuantStub()
 
 
     @torch.inference_mode()
@@ -496,10 +496,10 @@ class Transformer(nn.Module):
         
         for layer_idx, layer in enumerate(self.layers):
             h = layer(h, start_pos, freqs_cis, mask)
-            if layer_idx == 0:
-                h = self.quant(h)
+            """if layer_idx == 0:
+                h = self.quant(h)"""
         h = self.norm(h)
         output = self.output(h).float()
         # quantization
-        output = self.dequant(output)
+        # output = self.dequant(output)
         return output
