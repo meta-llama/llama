@@ -1,6 +1,7 @@
 import os
 import torch
 from llama import Llama
+import fire
 
 def print_model_size(mdl):
     torch.save(mdl.state_dict(), "tmp.pt")
@@ -37,4 +38,4 @@ def main():
     torch.save(q_model.state_dict(), "quantized_model.pt")
 
 if __name__ == "__main__":
-    main()
+    fire.Fire(main)
