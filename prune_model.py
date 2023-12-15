@@ -52,7 +52,7 @@ def prune_model(llama):
         #print(f'Sparsity of the TransformerBlock (before pruning): {sparsity}')
         
         
-        model.layer = prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
+        layer=prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
         
         after_total_weights = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight + layer.attention_norm.weight + layer.ffn_norm.weight
         after_num_zeros += torch.sum(after_total_weights == 0).item()        
