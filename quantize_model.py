@@ -31,7 +31,7 @@ def quantize_model(llama):
     torch.quantization.prepare(model, inplace=True)
 
     # calibrate model to real world data
-    dataloader = get_data_loader(5, 0)
+    dataloader = get_data_loader(3, 0)
     for _ in range(10):
         batch = next(iter(dataloader))
         llama.text_completion(
@@ -46,7 +46,7 @@ def quantize_model(llama):
 
 
 def main():
-    llama = get_model("llama-2-7b/", "tokenizer.model", 512, 1)
+    llama = get_model("llama-2-7b/", "tokenizer.model", 512, 6)
     print("model size before in-place quantization")
     print_model_size(llama.model)
 
