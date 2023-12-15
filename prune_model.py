@@ -3,6 +3,7 @@ import torch
 from llama import Llama
 import fire
 from gsmk_dataset import get_data_loader
+import torch.nn.utils.prune as prune
     
 backend = "qnnpack"
 
@@ -28,15 +29,22 @@ def prune_model(llama):
     print(f'model type = {type(model)}')
     
     # set up pruning:
-    enc = model.encoder
-    dec = model.decoder
+    for layer in model.layers:
+        prune.random_unstructured(layer, name="weight", amount=0.3)
+        prune.l1_unstructured(layer, name="bias", amount=3)
+        
+    
+    
+    #enc = model.encoder
+    #dec = model.decoder
     
     # setup quantization
-    model.eval()
+    """model.eval()
     model.qconfig = torch.ao.quantization.get_default_qconfig('x86')
     torch.backends.quantized.engine = backend
     torch.quantization.prepare(model, inplace=True)
-
+    """
+    
     # calibrate model to real world data
     dataloader = get_data_loader(3, 0)
     for _ in range(10):
@@ -49,7 +57,7 @@ def prune_model(llama):
         )
 
     # convert in place
-    torch.quantization.convert(model, inplace=True)
+    # torch.quantization.convert(model, inplace=True)
 
 
 def main():
