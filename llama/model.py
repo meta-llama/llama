@@ -492,10 +492,11 @@ class Transformer(nn.Module):
                 torch.zeros((seqlen, start_pos), device=tokens.device),
                 mask
             ]).type_as(h)
-
-        h = self.quant(h)
-        for layer in self.layers:
+        
+        for layer_idx, layer in enumerate(self.layers):
             h = layer(h, start_pos, freqs_cis, mask)
+            if layer_idx == 0:
+                h = self.quant(h)
         h = self.norm(h)
         output = self.output(h).float()
         # quantization
