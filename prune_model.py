@@ -31,6 +31,9 @@ def prune_model(llama):
     
     # set up pruning:
     count = 0
+    total_params = 0
+    before_num_zeros = 0
+    after_num_zeros = 0
     for layer in model.layers: # each layer is a TransformerBlock
         # we only have nn.Parameter objects in RMSNorm class
         #import torch.nn.utils.prune as prune
@@ -40,17 +43,20 @@ def prune_model(llama):
         #total_params = layer.weight.numel()
         #sparsity = num_zeros / total_params
         #print(f"Sparsity of the TransformerBlock (before pruning): {sparsity}")
-        attention_w = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight
-        att_norm_w = layer.attention_norm.weight
-        ffn_norm_w = layer.ffn_norm.weight
-        total_weights = attention_w + att_norm_w + ffn_norm_w
-        num_zeros = torch.sum(total_weights == 0).item()
-        total_params = total_weights.numel()
-        sparsity = num_zeros / total_params
-        print(f'Sparsity of the TransformerBlock (before pruning): {sparsity}')
+        before_total_weights = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight + layer.attention_norm.weight + layer.ffn_norm.weight
+        #att_norm_w = layer.attention_norm.weight
+        #ffn_norm_w = layer.ffn_norm.weight
+        #total_weights = attention_w + att_norm_w + ffn_norm_w
+        before_num_zeros += torch.sum(before_total_weights == 0).item()        
+        total_params += before_total_weights.numel()
+        #print(f'Sparsity of the TransformerBlock (before pruning): {sparsity}')
         
         
         model.layer = prune.random_unstructured(layer, name="attn_norm_w", amount=0.3) # name is a torch.nn.Parameter
+        
+        after_total_weights = layer.attention.wq.weight + layer.attention.wk.weight + layer.attention.wv.weight + layer.attention_norm.weight + layer.ffn_norm.weight
+        after_num_zeros += torch.sum(after_total_weights == 0).item()        
+        
         #num_zeros = torch.sum(layer.weight == 0).item()
         #sparsity = num_zeros / total_params
         #print(f"Sparsity of the TransformerBlock (after pruning): {sparsity}")
@@ -58,6 +64,10 @@ def prune_model(llama):
         count += 1
         if count % 10**6 == 0:
             print(f'we are {count} layers in')
+    
+    print(f'Sparsity of the TransformerBlock (before pruning): {before_num_zeros/total_params}')
+    print(f'Sparsity of the TransformerBlock (after pruning): {after_num_zeros/total_params}')
+    
     
     
     """for i in range(len(model.layers)): # each layer is a TransformerBlock
