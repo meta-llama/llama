@@ -30,8 +30,8 @@ def prune_model(llama):
     
     # set up pruning:
     for layer in model.layers:
-        prune.random_unstructured(layer, name="weight", amount=0.3)
-        prune.l1_unstructured(layer, name="bias", amount=3)
+        prune.random_unstructured(layer, name="attention", amount=0.3)
+        #prune.l1_unstructured(layer, name="bias", amount=3)
         
     
     
