@@ -57,11 +57,14 @@ def prune_model(llama):
         if idx > 5:
             break
         prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
+        torch.cuda.empty_cache()
         prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
+        torch.cuda.empty_cache()
         prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
+        torch.cuda.empty_cache()
         prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
-        prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
-        
+        torch.cuda.empty_cache()
+        prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)        
         torch.cuda.empty_cache()
 
         # prune_model_inner(transformer_block, name="attn_norm_w", amount=0.3)
