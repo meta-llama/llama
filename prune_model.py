@@ -61,6 +61,8 @@ def prune_model(llama):
         prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
         prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
         prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)
+        
+        torch.cuda.empty_cache()
 
         # prune_model_inner(transformer_block, name="attn_norm_w", amount=0.3)
         # prune_model_inner(transformer_block.attention.wq, name="weight", amount=0.3)
