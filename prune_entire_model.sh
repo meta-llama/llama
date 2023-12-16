@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in {1..2}; do
-    torchrun prune_model.py tokenizer.model last_tokenizer.model
+for i in {1..15}; do
+    torchrun prune_model.py $i
     echo $i
 done

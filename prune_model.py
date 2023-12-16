@@ -74,13 +74,36 @@ def prune_model(llama):
         # prune_model_inner(transformer_block.attention.wv, name="weight", amount=0.3)
         # prune_model_inner(transformer_block.attention.wo, name="weight", amount=0.3)
 
+def prune_model_all(llama, start_ind):
+    print(f'model type = {type(llama.model)}')
+    print(f'model layers = {len(llama.model.layers)}')
+    
+    for idx, transformer_block in enumerate(llama.model.layers[start_ind:start_ind+2]):
+        check_mem()
+        print(f'pruning layer {idx}')
+        torch.cuda.empty_cache()
+        if idx > 1:
+            break
+        prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
+        torch.cuda.empty_cache()
+        prune.random_unstructured(transformer_block.attention.wq, name="weight", amount=0.3)
+        torch.cuda.empty_cache()
+        prune.random_unstructured(transformer_block.attention.wk, name="weight", amount=0.3)
+        torch.cuda.empty_cache()
+        prune.random_unstructured(transformer_block.attention.wv, name="weight", amount=0.3)
+        torch.cuda.empty_cache()
+        prune.random_unstructured(transformer_block.attention.wo, name="weight", amount=0.3)        
+        torch.cuda.empty_cache()
+
+
+
 def prune_model_inner(module, name, amount):
     prune.random_unstructured(module, name=name, amount=amount)
 
 def main():
     print(f'First argument = {sys.argv[1]}')
     print("Starting up...")
-    llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
+    llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "backup_tokenizer.model", 512, 6)
     check_mem()
     print("Model loaded")
     print("Calculating sparsity...")
@@ -89,7 +112,8 @@ def main():
     check_mem()
     print(f'init_sparsity = {init_sparsity}')
     print("Pruning model...")
-    prune_model(llama)
+    #prune_model(llama)
+    prune_model_all(llama, 2*sys.argv[1]) # go from 0 to 15
     print("Pruning done")
     torch.cuda.empty_cache()
     check_mem()
@@ -97,7 +121,7 @@ def main():
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
     print(f'Last argument = {sys.argv[2]}')
-    # torch.save(llama.model.state_dict(), "pruned_model.pt")
+    torch.save(llama.model.state_dict(), "backup_tokenizer.model")
 
 if __name__ == "__main__":
     fire.Fire(main)
