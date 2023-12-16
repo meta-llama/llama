@@ -124,7 +124,7 @@ def main():
     print("Calculating sparsity...")
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
-    print(f'Last argument = {sys.argv[2]}')
+    #print(f'Last argument = {sys.argv[2]}')
     torch.save(llama.model.state_dict(), "to_mod_tokenizer.model")
 
 if __name__ == "__main__":
