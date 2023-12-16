@@ -49,6 +49,7 @@ def calculate_model_sparsity(llama):
 
 def prune_model(llama):
     print(f'model type = {type(llama.model)}')
+    print(f'model layers = {len(llama.model.layers)}')
     
     for idx, transformer_block in enumerate(llama.model.layers):
         check_mem()
@@ -94,6 +95,7 @@ def main():
     print("Calculating sparsity...")
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
+    # torch.save(llama.model.state_dict(), "pruned_model.pt")
 
 if __name__ == "__main__":
     fire.Fire(main)
