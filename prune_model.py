@@ -54,7 +54,7 @@ def prune_model(llama):
         check_mem()
         print(f'pruning layer {idx}')
         torch.cuda.empty_cache()
-        if idx > 3:
+        if idx > 2:
             break
         prune.random_unstructured(transformer_block, name="attn_norm_w", amount=0.3) # name has to be a torch.nn.Parameter
         torch.cuda.empty_cache()
