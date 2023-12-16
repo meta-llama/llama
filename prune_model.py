@@ -103,7 +103,7 @@ def prune_model_inner(module, name, amount):
 def main():
     print(f'First argument = {sys.argv[1]}')
     print("Starting up...")
-    llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "to_mod_tokenizer.pt", 512, 6)
+    llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "to_mod_tokenizer.pt", 512, 4)
     check_mem()
     print("Model loaded")
     print("Calculating sparsity...")
