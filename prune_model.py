@@ -73,8 +73,6 @@ def prune_model(llama):
 
 
 def prune_model_layer(llama, layer_idx):
-    print(f'model type = {type(llama.model)}')
-    print(f'model layers = {len(llama.model.layers)}')
     transformer_block = llama.model.layers[layer_idx]
     check_mem()
     print(f'pruning layer {layer_idx}')
@@ -99,6 +97,8 @@ def main():
     llama = get_model(checkpoint_dir, "tokenizer.model", 512, 4)
     check_mem()
     print("Model loaded")
+    print(f'Model type = {type(llama.model)}')
+    print(f'Model layers = {len(llama.model.layers)}')
 
     print("Calculating sparsity...")
     init_sparsity = calculate_model_sparsity(llama)
