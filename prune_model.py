@@ -101,7 +101,7 @@ def prune_model_inner(module, name, amount):
     prune.random_unstructured(module, name=name, amount=amount)
 
 def main():
-    print(f'First argument = {sys.argv[1]}')
+    #print(f'First argument = {sys.argv[1]}')
     print("Starting up...")
     llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "backup_tokenizer.model", 512, 6)
     check_mem()
