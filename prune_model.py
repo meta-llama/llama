@@ -113,7 +113,7 @@ def main():
     print(f'init_sparsity = {init_sparsity}')
     print("Pruning model...")
     #prune_model(llama)
-    prune_model_all(llama, 2*sys.argv[1]) # go from 0 to 15
+    prune_model_all(llama, 2*int(sys.argv[1])) # go from 0 to 15
     print("Pruning done")
     torch.cuda.empty_cache()
     check_mem()
