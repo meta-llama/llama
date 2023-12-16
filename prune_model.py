@@ -3,7 +3,7 @@ from llama import Llama
 import fire
 import torch
 import torch.nn.utils.prune as prune
-
+import sys
 import nvidia_smi
 
 def check_mem():
@@ -78,6 +78,7 @@ def prune_model_inner(module, name, amount):
     prune.random_unstructured(module, name=name, amount=amount)
 
 def main():
+    print(f'First argument = {sys.argv[1]}')
     print("Starting up...")
     llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
     check_mem()
@@ -95,6 +96,7 @@ def main():
     print("Calculating sparsity...")
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
+    print(f'Last argument = {sys.argv[2]}')
     # torch.save(llama.model.state_dict(), "pruned_model.pt")
 
 if __name__ == "__main__":
