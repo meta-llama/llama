@@ -101,9 +101,9 @@ def prune_model_inner(module, name, amount):
     prune.random_unstructured(module, name=name, amount=amount)
 
 def main():
-    #print(f'First argument = {sys.argv[1]}')
+    print(f'First argument = {sys.argv[1]}')
     print("Starting up...")
-    llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "tokenizer.model", 512, 6)
+    llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "to_mod_tokenizer.model", 512, 6)
     check_mem()
     print("Model loaded")
     print("Calculating sparsity...")
@@ -114,8 +114,8 @@ def main():
     
     
     print("Pruning model...")
-    prune_model(llama)
-    #prune_model_all(llama, 2*int(sys.argv[1])) # go from 0 to 15
+    #prune_model(llama)
+    prune_model_all(llama, 2*int(sys.argv[1])) # go from 0 to 15
     print("Pruning done")
     torch.cuda.empty_cache()
     
@@ -124,8 +124,8 @@ def main():
     print("Calculating sparsity...")
     final_sparsity = calculate_model_sparsity(llama)
     print(f'final_sparsity = {final_sparsity}')
-    #print(f'Last argument = {sys.argv[2]}')
-    #torch.save(llama.model.state_dict(), "backup_tokenizer.model")
+    print(f'Last argument = {sys.argv[2]}')
+    torch.save(llama.model.state_dict(), "to_mod_tokenizer.model")
 
 if __name__ == "__main__":
     fire.Fire(main)
