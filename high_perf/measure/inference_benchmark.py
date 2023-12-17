@@ -1,5 +1,5 @@
 import torch
-from gsmk_dataset import get_data_loader
+from high_perf.common.data.gsmk_dataset import get_data_loader
 import time
 import fire
 from torch.profiler import profile, record_function, ProfilerActivity
