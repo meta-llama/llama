@@ -2,7 +2,7 @@ import os
 import torch
 from llama import Llama
 import fire
-from gsmk_dataset import get_data_loader
+from optimization.gsmk_dataset import get_data_loader
     
 backend = "qnnpack"
 
@@ -46,7 +46,8 @@ def quantize_model(llama):
 
 
 def main():
-    llama = get_model("llama-2-7b/", "tokenizer.model", 512, 6)
+    ROOT_DIR = "/home/gyt2107/hpml_llama/"
+    llama = get_model(os.path.join(ROOT_DIR, "llama-2-7b/"), os.path.join(ROOT_DIR, "tokenizer.model"), 512, 6)
     print("model size before in-place quantization")
     print_model_size(llama.model)
 

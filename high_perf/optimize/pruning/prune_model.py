@@ -94,7 +94,7 @@ def main():
     print("Starting up...")
 
     checkpoint_dir = "/home/gyt2107/hpml_llama/llama-2-7b-pruned/"
-    llama = get_model(checkpoint_dir, "tokenizer.model", 512, 4)
+    llama = get_model(checkpoint_dir, "/home/gyt2107/hpml_llama/tokenizer.model", 512, 4)
     check_mem()
     print("Model loaded")
     print(f'Model type = {type(llama.model)}')

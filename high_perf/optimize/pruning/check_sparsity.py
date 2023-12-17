@@ -1,10 +1,6 @@
 import torch
 from llama import Llama
-import fire
-import torch
-import torch.nn.utils.prune as prune
-import sys
-import nvidia_smi
+
 
 def get_model(ckpt_dir, tokenizer_path, max_seq_len, max_batch_size):
     generator = Llama.build(
@@ -33,7 +29,7 @@ def calculate_model_sparsity(llama):
     return num_zeros/total_params
 
 print("Starting up...")
-llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "backup_tokenizer.model", 512, 6)
+llama = get_model("/home/gyt2107/hpml_llama/llama-2-7b/", "/home/gyt2107/hpml_llama/tokenizer.model", 512, 6)
 print("Model loaded")
 print("Calculating sparsity...")
 sparsity = calculate_model_sparsity(llama)

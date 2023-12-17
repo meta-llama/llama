@@ -4,6 +4,9 @@
 
 **Project Members:** Sanjay Sharma (sgs2185) and George Tamer (gyt2107)
 
+- original llama code: `llama/`
+- our code: `high_perf`
+
 ## Download
 
 The Llama model can be downloaded from Facebook's official repo: https://github.com/facebookresearch/llama. We downloaded the model from here by filling out Facebook's request form which gave us access to download. We have then created our own repo (which includes the Llama model) at this link: https://github.com/gtamer2/hpml_llama
@@ -35,13 +38,7 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
-The example_chat_completion.py and example_text_completion.py files are benchmark files provided by Facebook.
-
-and that you have a CUDA enabled system that is compatible with your PyTorch version.
-
-^^In this command, you run the inference_benchmark.py file with many command line arguments specifying the checkpoint directory of the llama-2-7b file, the path to the tokenizer file, and the max sequence length and the max batch size.
-
-We also have other files called prune_model.py, quantize_model.py, and script_model.py for our work we were trying to accomplish regarding pruning, quantizing, and scripting the model.
+6. Follow the detailsi before to run benchmarks and optiimizations.
 
 ## Reproducinig Results
 
@@ -61,6 +58,8 @@ You can run this from the root of the repository with the following:
 torchrun inference_benchmark.py --ckpt_dir llama-2-7b/ --tokenizer_path tokenizer.model --max_seq_len 512 --max_batch_size 6
 ```
 
+^^In this command, you run the inference_benchmark.py file with many command line arguments specifying the checkpoint directory of the llama-2-7b file, the path to the tokenizer file, and the max sequence length and the max batch size.
+
 ### Inference Truthfulness Benchmark
 
 We used the [TruthfulQA](https://github.com/sylinrl/TruthfulQA/tree/main) language model benchmark to compare the mdoel's output quality before and after applying latency optimimizations.
@@ -72,3 +71,9 @@ The script **_TODO_** runs the benchmark and outputs a score.
 The file _prune_model.py_ prunes one transformer block of a llama transformer at a time. You can run this with: `torchrun prune_model.py <layer index to prune>`.
 
 Alternatively, you can prune the entire model by running the script
+
+### Quantizing the Model
+
+If you would like to quantize the model
+
+### Scripting the Model
