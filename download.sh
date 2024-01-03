@@ -56,7 +56,7 @@ do
 
     for s in $(seq 0 ${SHARD})
     do
-		sf=$(printf "%02d" $s)
+        sf=$(printf "%02d" $s)
         wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${sf}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${sf}.pth"
     done
 
