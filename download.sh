@@ -11,7 +11,7 @@ read -p "Enter the list of models to download without spaces (7B,13B,70B,7B-chat
 TARGET_FOLDER="."             # where all files should end up
 mkdir -p ${TARGET_FOLDER}
 
-if [[ $MODEL_SIZE == "" ]]; then
+if [[ "$MODEL_SIZE" == "" ]]; then
     MODEL_SIZE="7B,13B,70B,7B-chat,13B-chat,70B-chat"
 fi
 
@@ -54,9 +54,10 @@ do
     echo "Downloading ${MODEL_PATH}"
     mkdir -p ${TARGET_FOLDER}"/${MODEL_PATH}"
 
-    for s in $(seq -f "0%g" 0 ${SHARD})
+    for s in $(seq 0 ${SHARD})
     do
-        wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${s}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${s}.pth"
+		sf=$(printf "%02d" $s)
+        wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/consolidated.${sf}.pth"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/consolidated.${sf}.pth"
     done
 
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
