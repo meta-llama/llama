@@ -7,20 +7,20 @@ assignees: ''
 
 ---
 
-**Before submitting a bug, please make sure the issue hasn't been already addressed by searching through the [FAQs](https://github.com/facebookresearch/llama/blob/main/FAQ.md) and [existing/past issues](https://github.com/facebookresearch/llama/issues)**
+**Before submitting a bug, please make sure the issue hasn't been already addressed by searching through the [FAQs](https://ai.meta.com/llama/faq/) and [existing/past issues](https://github.com/facebookresearch/llama/issues)**
 
 ## Describe the bug
-Please provide a clear and concise description of what the bug is. If relevant, please include a _minimal_ (least lines of code necessary) _reproducible_ (running this will give us the same result as you get) code snippet. Make sure to include the relevant imports.
-
-Remember to wrap the code and outputs in ```` ```triple-quotes blocks``` ````.
+<Please provide a clear and concise description of what the bug is. If relevant, please include a _minimal_ (least lines of code necessary) _reproducible_ (running this will give us the same result as you get) code snippet. Make sure to include the relevant imports.>
 
 ### Minimal reproducible example
+<Remember to wrap the code in ```` ```triple-quotes blocks``` ````>
 
 ```python
 # sample code to repro the bug
 ```
 
 ### Output
+<Remember to wrap the output in ```` ```triple-quotes blocks``` ````>
 
 ```
 <paste stacktrace and other outputs here>
