@@ -3,7 +3,7 @@
 ## Our Pledge
 
 In the interest of fostering an open and welcoming environment, we as
-contributors and maintainers pledge to make participation in our project and
+contributors and maintainers pledge to participate in our project and
 our community a harassment-free experience for everyone, regardless of age, body
 size, disability, ethnicity, sex characteristics, gender identity and expression,
 level of experience, education, socio-economic status, nationality, personal
@@ -26,10 +26,9 @@ Examples of unacceptable behavior by participants include:
 advances
 * Trolling, insulting/derogatory comments, and personal or political attacks
 * Public or private harassment
-* Publishing others' private information, such as a physical or electronic
+* Publishing others' private information, such as physical or electronic
 address, without explicit permission
-* Other conduct which could reasonably be considered inappropriate in a
-professional setting
+* Other conduct that could reasonably be considered inappropriate in a professional setting
 
 ## Our Responsibilities
 
@@ -62,19 +61,18 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by contacting the project team at <opensource-conduct@meta.com>. All
 complaints will be reviewed and investigated and will result in a response that
 is deemed necessary and appropriate to the circumstances. The project team is
-obligated to maintain confidentiality with regard to the reporter of an incident.
+obligated to maintain confidentiality about the reporter of an incident.
 Further details of specific enforcement policies may be posted separately.
 
-Project maintainers who do not follow or enforce the Code of Conduct in good
-faith may face temporary or permanent repercussions as determined by other
+Project maintainers who do not follow or enforce the Code of Conduct in good faith may face temporary or permanent repercussions as determined by other
 members of the project's leadership.
 
 ## Attribution
 
 This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 1.4,
-available at https://www.contributor-covenant.org/version/1/4/code-of-conduct.html
+available at <https://www.contributor-covenant.org/version/1/4/code-of-conduct.html>
 
 [homepage]: https://www.contributor-covenant.org
 
 For answers to common questions about this code of conduct, see
-https://www.contributor-covenant.org/faq
+<https://www.contributor-covenant.org/faq>
