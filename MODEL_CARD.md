@@ -24,21 +24,23 @@ Llama 2|*A new mix of publicly available online data*|70B|4k|&#10004;|2.0T|1.5 x
 
 **Status** This is a static model trained on an offline dataset. Future versions of the tuned models will be released as we improve model safety with community feedback.
 
-**License** A custom commercial license is available at: [https://ai.meta.com/resources/models-and-libraries/llama-downloads/](https://ai.meta.com/resources/models-and-libraries/llama-downloads/)
+**License** A custom commercial license is available at [https://ai.meta.com/resources/models-and-libraries/llama-downloads/](https://ai.meta.com/resources/models-and-libraries/llama-downloads/)
 
-**Research Paper** More information can be found in the paper "Llama-2: Open Foundation and Fine-tuned Chat Models", available at https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/.
+**Research Paper** More information can be found in the paper "Llama-2: Open Foundation and Fine-tuned Chat Models", available at <https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/>.
 
 **Where to send questions or comments about the model** Instructions on how to provide feedback or comments on the model can be found in the model [README](README.md).
 
 # **Intended Use**
+
 **Intended Use Cases** Llama 2 is intended for commercial and research use in English. Tuned models are intended for assistant-like chat, whereas pretrained models can be adapted for a variety of natural language generation tasks.
 
-**Out-of-scope** Uses Use in any manner that violates applicable laws or regulations (including trade compliance laws). Use in any other way that is prohibited by the Acceptable Use Policy and Llama 2 Community License. Use in languages other than English**. 
+**Out-of-scope** Uses Use in any manner that violates applicable laws or regulations (including trade compliance laws). Use in any other way that is prohibited by the Acceptable Use Policy and Llama 2 Community License. Use in languages other than English**.
 
 **Note: Developers may fine-tune Llama 2 models for languages beyond English provided they comply with the Llama 2 Community License and the Acceptable Use Policy.
 
 # **Hardware and Software**
-**Training Factors** We used custom training libraries, Meta's Research Super Cluster, and production clusters for pretraining. Fine-tuning, annotation, and evaluation were also performed on third-party cloud compute.
+
+**Training Factors** We used custom training libraries, Meta's Research Super Cluster, and production clusters for pretraining. Fine-tuning, annotation, and evaluation were also performed on third-party cloud computing.
 
 **Carbon Footprint** Pretraining utilized a cumulative 3.3M GPU hours of computation on hardware of type A100-80GB (TDP of 350-400W). Estimated total emissions were 539 tCO2eq, 100% of which were offset by Meta’s sustainability program.
 
@@ -52,6 +54,7 @@ Llama 2|*A new mix of publicly available online data*|70B|4k|&#10004;|2.0T|1.5 x
 **CO<sub>2</sub> emissions during pretraining.** Time: total GPU time required for training each model. Power Consumption: peak power capacity per GPU device for the GPUs used adjusted for power usage efficiency. 100% of the emissions are directly offset by Meta's sustainability program, and because we are openly releasing these models, the pretraining costs do not need to be incurred by others.
 
 # **Training Data**
+
 **Overview** Llama 2 was pretrained on 2 trillion tokens of data from publicly available sources. The fine-tuning data includes publicly available instruction datasets, as well as over one million new human-annotated examples. Neither the pretraining nor the fine-tuning datasets include Meta user data.
 
 **Data Freshness** The pretraining data has a cutoff of September 2022, but some tuning data is more recent, up to July 2023.
@@ -85,7 +88,6 @@ For all the evaluations, we use our internal evaluations library.
 
 **Evaluation of pretrained LLMs on automatic safety benchmarks.** For TruthfulQA, we present the percentage of generations that are both truthful and informative (the higher the better). For ToxiGen, we present the percentage of toxic generations (the smaller the better).
 
-
 |||TruthfulQA|Toxigen|
 |---|---|---|---|
 |Llama-2-Chat|7B|57.04|**0.00**|
@@ -95,6 +97,7 @@ For all the evaluations, we use our internal evaluations library.
 **Evaluation of fine-tuned LLMs on different safety datasets.** Same metric definitions as above.
 
 # **Ethical Considerations and Limitations**
-Llama 2 is a new technology that carries risks with use. Testing conducted to date has been in English, and has not covered, nor could it cover all scenarios. For these reasons, as with all LLMs, Llama 2’s potential outputs cannot be predicted in advance, and the model may in some instances produce inaccurate, biased or other objectionable responses to user prompts. Therefore, before deploying any applications of Llama 2, developers should perform safety testing and tuning tailored to their specific applications of the model.
+
+Llama 2 is a new technology that carries risks with use. Testing conducted to date has been in English, and has not covered, nor could it cover all scenarios. For these reasons, as with all LLMs, Llama 2’s potential outputs cannot be predicted in advance, and the model may in some instances produce inaccurate, biased, or other objectionable responses to user prompts. Therefore, before deploying any applications of Llama 2, developers should perform safety testing and tuning tailored to their specific applications of the model.
 
 Please see the Responsible Use Guide available at [https://ai.meta.com/llama/responsible-use-guide/](https://ai.meta.com/llama/responsible-use-guide/)
