@@ -56,6 +56,7 @@ class Llama:
         max_seq_len: int,
         max_batch_size: int,
         model_parallel_size: Optional[int] = None,
+        seed: int = 1,
     ) -> "Llama":
         """
         Build a Llama instance by initializing and loading a pre-trained model.
@@ -91,7 +92,7 @@ class Llama:
         torch.cuda.set_device(local_rank)
 
         # seed must be the same in all processes
-        torch.manual_seed(1)
+        torch.manual_seed(seed)
 
         if local_rank > 0:
             sys.stdout = open(os.devnull, "w")
@@ -173,15 +174,17 @@ class Llama:
         prev_pos = 0
         eos_reached = torch.tensor([False] * bsz, device="cuda")
         input_text_mask = tokens != pad_id
+        if min_prompt_len == total_len:
+            logits = self.model.forward(tokens, prev_pos)
+            token_logprobs = -F.cross_entropy(
+                input=logits.transpose(1, 2),
+                target=tokens,
+                reduction="none",
+                ignore_index=pad_id,
+            )
+
         for cur_pos in range(min_prompt_len, total_len):
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
-            if logprobs:
-                token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
-                    input=logits.transpose(1, 2),
-                    target=tokens[:, prev_pos + 1 : cur_pos + 1],
-                    reduction="none",
-                    ignore_index=pad_id,
-                )
             if temperature > 0:
                 probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
                 next_token = sample_top_p(probs, top_p)
@@ -194,6 +197,13 @@ class Llama:
                 input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
             )
             tokens[:, cur_pos] = next_token
+            if logprobs:
+                token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
+                    input=logits.transpose(1, 2),
+                    target=tokens[:, prev_pos + 1 : cur_pos + 1],
+                    reduction="none",
+                    ignore_index=pad_id,
+                )
             eos_reached |= (~input_text_mask[:, cur_pos]) & (
                 next_token == self.tokenizer.eos_id
             )

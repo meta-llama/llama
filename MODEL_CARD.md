@@ -12,7 +12,7 @@ Meta developed and released the Llama 2 family of large language models (LLMs), 
 
 **Model Architecture** Llama 2 is an auto-regressive language model that uses an optimized transformer architecture. The tuned versions use supervised fine-tuning (SFT) and reinforcement learning with human feedback (RLHF) to align with human preferences for helpfulness and safety.
 
-||Training Data|Params|Content Length|GQA|Tokens|LR|
+||Training Data|Params|Context Length|GQA|Tokens|LR|
 |---|---|---|---|---|---|---|
 Llama 2|*A new mix of publicly available online data*|7B|4k|&#10007;|2.0T|3.0 x 10<sup>-4</sup>
 Llama 2|*A new mix of publicly available online data*|13B|4k|&#10007;|2.0T|3.0 x 10<sup>-4</sup>
@@ -33,7 +33,9 @@ Llama 2|*A new mix of publicly available online data*|70B|4k|&#10004;|2.0T|1.5 x
 # **Intended Use**
 **Intended Use Cases** Llama 2 is intended for commercial and research use in English. Tuned models are intended for assistant-like chat, whereas pretrained models can be adapted for a variety of natural language generation tasks.
 
-**Out-of-scope Uses** Use in any manner that violates applicable laws or regulations (including trade compliance laws). Use in languages other than English. Use in any other way that is prohibited by the Acceptable Use Policy and Licensing Agreement for Llama 2.
+**Out-of-scope** Uses Use in any manner that violates applicable laws or regulations (including trade compliance laws). Use in any other way that is prohibited by the Acceptable Use Policy and Llama 2 Community License. Use in languages other than English**. 
+
+**Note: Developers may fine-tune Llama 2 models for languages beyond English provided they comply with the Llama 2 Community License and the Acceptable Use Policy.
 
 # **Hardware and Software**
 **Training Factors** We used custom training libraries, Meta's Research Super Cluster, and production clusters for pretraining. Fine-tuning, annotation, and evaluation were also performed on third-party cloud compute.
