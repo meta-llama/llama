@@ -1,0 +1,58 @@
+Starting up...
+Building data loaders...
+Initializing Model...
+> initializing model parallel with size 1
+> initializing ddp with size 1
+> initializing pipeline with size 1
+Loaded in 67.71 seconds
+Running inference benchmark...
+
+Working on device: cuda
+Starting BATCH 1 of 5
+Finished Batch 1 of 5
+Batch load time: 0.0012337989901425317
+Batch inference time: 4.979560280000442
+Batch total time: 4.980800386008923
+Starting BATCH 2 of 5
+Finished Batch 2 of 5
+Batch load time: 0.0006314070051303133
+Batch inference time: 4.436402372986777
+Batch total time: 4.4370395870064385
+Starting BATCH 3 of 5
+Finished Batch 3 of 5
+Batch load time: 0.0006100949976826087
+Batch inference time: 4.489002016998711
+Batch total time: 4.489618256004178
+Starting BATCH 4 of 5
+Finished Batch 4 of 5
+Batch load time: 0.000657053999020718
+Batch inference time: 4.481591136995121
+Batch total time: 4.482254397997167
+Starting BATCH 5 of 5
+Finished Batch 5 of 5
+Batch load time: 0.0006241549999685958
+Batch inference time: 4.433049211991602
+Batch total time: 4.43367860399303
+
+
+ Manual Profile Results...
+Data-loading times
+> per epoch:  tensor([0.0012, 0.0006, 0.0006, 0.0007, 0.0006])
+> average:  tensor(0.0008)
+
+Inference time for each epoch
+> per epoch tensor([4.9805, 4.4375, 4.4883, 4.4805, 4.4336])
+> average tensor(4.5625)
+
+Total time for each epoch
+> per epoch tensor([4.9805, 4.4375, 4.4883, 4.4805, 4.4336])
+> average tensor(4.5625)
+
+
+
+Profiling sorted by CUDA time total
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+                                                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg       CPU Mem  Self CPU Mem      CUDA Mem  Self CUDA Mem    # of Calls
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------
+                                          run_benchmark        26.66%        6.085s       100.00%       22.827s       22.827s       0.000us         0.00%       15.085s       15.085s           0 b      -2.66 Kb       8.13 Mb      -4.18 Gb             1
+"benchmark_outputs/batch_size_2_num_workers_0.txt" 91L, 8729B                       52,0-1        Top
