@@ -36,22 +36,28 @@ def main(
         max_batch_size=max_batch_size,
     )
 
-    prompts: List[str] = [
-        # For these prompts, the expected answer is the natural continuation of the prompt
-        "I believe the meaning of life is",
-        "Simply put, the theory of relativity states that ",
-        """A brief message congratulating the team on the launch:
+    prompts = [
+        # Meaning of Life
+        "To me, the purpose of existence is",
+        
+        # Theory of Relativity
+        "Explaining Einstein's theory of relativity in simple terms, it asserts that",
+        
+        # Team Congratulations Message
+        """Sending my warm congratulations to the team on their successful launch:
 
-        Hi everyone,
-        
-        I just """,
-        # Few shot prompt (providing a few examples before asking model to complete more);
+        Hey everyone,
+
+        I wanted to share my heartfelt congratulations on the incredible launch. It's a testament to all the hard work and dedication you've put in. I'm proud to be a part of such an amazing team. Cheers to our collective success!""",
+
+        # Translation Prompt
         """Translate English to French:
-        
-        sea otter => loutre de mer
-        peppermint => menthe poivrée
-        plush girafe => girafe peluche
-        cheese =>""",
+
+        mountain => montagne
+        laptop => ordinateur portable
+        sunrise => lever de soleil
+        chocolate => 
+        """,
     ]
     results = generator.text_completion(
         prompts,
