@@ -1,8 +1,8 @@
 # Llama 2
 
-We are unlocking the power of large language models. Our latest version of Llama is now accessible to individuals, creators, researchers and businesses of all sizes so that they can experiment, innovate and scale their ideas responsibly. 
+We are unlocking the power of large language models. Our latest version of Llama is now accessible to individuals, creators, researchers, and businesses of all sizes so that they can experiment, innovate, and scale their ideas responsibly. 
 
-This release includes model weights and starting code for pretrained and fine-tuned Llama language models — ranging from 7B to 70B parameters.
+This release includes model weights and starting code for pre-trained and fine-tuned Llama language models — ranging from 7B to 70B parameters.
 
 This repository is intended as a minimal example to load [Llama 2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/) models and run inference. For more detailed examples leveraging Hugging Face, see [llama-recipes](https://github.com/facebookresearch/llama-recipes/).
 
@@ -18,11 +18,11 @@ In order to download the model weights and tokenizer, please visit the [Meta web
 
 Once your request is approved, you will receive a signed URL over email. Then run the download.sh script, passing the URL provided when prompted to start the download.
 
-Pre-requisites: Make sure you have `wget` and `md5sum` installed. Then to run the script: `./download.sh`.
+Pre-requisites: Make sure you have `wget` and `md5sum` installed. Then run the script: `./download.sh`.
 
 Keep in mind that the links expire after 24 hours and a certain amount of downloads. If you start seeing errors such as `403: Forbidden`, you can always re-request a link.
 
-### Access on Hugging Face
+### Access to Hugging Face
 
 We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
 
@@ -32,9 +32,9 @@ You can follow the steps below to quickly get up and running with Llama 2 models
 
 1. In a conda env with PyTorch / CUDA available clone and download this repository.
 
-2. In the top level directory run:
+2. In the top-level directory run:
     ```bash
-    pip install -e .
+    pip install -e.
     ```
 3. Visit the [Meta website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
 
