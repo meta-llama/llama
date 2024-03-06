@@ -34,7 +34,7 @@ You can follow the steps below to quickly get up and running with Llama 2 models
 
 2. In the top-level directory run:
     ```bash
-    pip install -e.
+    pip install -e .
     ```
 3. Visit the [Meta website](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) and register to download the model/s.
 
