@@ -106,7 +106,7 @@ def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
 
 def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
     """
-    Reshape frequency tensor for broadcasting it with another tensor.
+    Reshape the frequency tensor for broadcasting it with another tensor.
 
     This function reshapes the frequency tensor to have the same shape as the target tensor 'x'
     for the purpose of broadcasting the frequency tensor during element-wise operations.
@@ -318,7 +318,7 @@ class FeedForward(nn.Module):
         Args:
             dim (int): Input dimension.
             hidden_dim (int): Hidden dimension of the feedforward layer.
-            multiple_of (int): Value to ensure hidden dimension is a multiple of this value.
+            multiple_of (int): Value to ensure the hidden dimension is a multiple of this value.
             ffn_dim_multiplier (float, optional): Custom multiplier for hidden dimension. Defaults to None.
 
         Attributes:
