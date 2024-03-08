@@ -10,14 +10,9 @@ from typing import List, Literal, Optional, Tuple, TypedDict
 
 import torch
 import torch.nn.functional as F
-from fairscale.nn.model_parallel.initialize import (
-    get_model_parallel_rank,
-    initialize_model_parallel,
-    model_parallel_is_initialized,
-)
-
-from llama.model import ModelArgs, Transformer
-from llama.tokenizer import Tokenizer
+from .model import ModelArgs, Transformer
+from .tokenizer import Tokenizer
+from tqdm import tqdm
 
 Role = Literal["system", "user", "assistant"]
 
@@ -48,6 +43,55 @@ SPECIAL_TAGS = [B_INST, E_INST, "<<SYS>>", "<</SYS>>"]
 UNSAFE_ERROR = "Error: special tags are not allowed as part of the prompt."
 
 
+def load_chunked_checkpoints(checkpoints, n_layers, start_layer_idx):
+    checkpoint = {}
+
+    print(f"Loading {len(checkpoints)} checkpoint files")
+    for ckpt in tqdm(checkpoints):
+        # Layer range is in the file name, like layers_start-end.pth
+        layer_range = ckpt.stem.split("_")[1]
+        start_layer, end_layer = map(int, layer_range.split("-"))
+        if start_layer > n_layers + start_layer_idx:
+            continue
+        if end_layer < start_layer_idx:
+            continue
+
+        loaded_ckpt = torch.load(ckpt, map_location="cpu")
+        checkpoint.update(loaded_ckpt)
+    return checkpoint
+
+
+def load_sharded_checkpionts(checkpoints, n_layers):
+    checkpoint = {}
+    print(f"Loading {len(checkpoints)} checkpoint files")
+    for ckpt in tqdm(checkpoints):
+        loaded_ckpt = torch.load(ckpt, map_location="cpu")
+        for (
+            key,
+            value,
+        ) in loaded_ckpt.items():
+            if "layers." in key:
+                layer_num = int(key.split("layers.")[1].split(".")[0])
+                if layer_num >= n_layers:
+                    continue
+            if key in checkpoint:
+                checkpoint[key] += [value]
+            else:
+                checkpoint[key] = [value]
+        del loaded_ckpt
+
+    # concat checkpoint values
+    for key, value in checkpoint.items():
+        if len(value) == 1 or "norm" in key:
+            checkpoint[key] = value[0]
+        else:
+            # cat_dim is index of the smallest dimension in value[0].shape
+            cat_dim = torch.argmin(torch.tensor(value[0].shape))
+            checkpoint[key] = torch.cat(value, dim=cat_dim)
+
+    return checkpoint
+
+
 class Llama:
     @staticmethod
     def build(
@@ -57,6 +101,9 @@ class Llama:
         max_batch_size: int,
         model_parallel_size: Optional[int] = None,
         seed: int = 1,
+        skip_model_load=False,
+        n_layers=None,
+        start_layer_idx=0,
     ) -> "Llama":
         """
         Build a Llama instance by initializing and loading a pre-trained model.
@@ -81,32 +128,30 @@ class Llama:
             and loads the pre-trained model and tokenizer.
 
         """
-        if not torch.distributed.is_initialized():
-            torch.distributed.init_process_group("nccl")
-        if not model_parallel_is_initialized():
-            if model_parallel_size is None:
-                model_parallel_size = int(os.environ.get("WORLD_SIZE", 1))
-            initialize_model_parallel(model_parallel_size)
-
-        local_rank = int(os.environ.get("LOCAL_RANK", 0))
-        torch.cuda.set_device(local_rank)
 
         # seed must be the same in all processes
         torch.manual_seed(seed)
 
-        if local_rank > 0:
-            sys.stdout = open(os.devnull, "w")
-
         start_time = time.time()
-        checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
-        assert len(checkpoints) > 0, f"no checkpoint files found in {ckpt_dir}"
-        assert model_parallel_size == len(
-            checkpoints
-        ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
-        ckpt_path = checkpoints[get_model_parallel_rank()]
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
         with open(Path(ckpt_dir) / "params.json", "r") as f:
             params = json.loads(f.read())
+
+        if n_layers is not None:
+            params["n_layers"] = n_layers
+            params["start_layer_idx"] = start_layer_idx
+        else:
+            n_layers = params["n_layers"]
+
+        checkpoint = {}
+        if not skip_model_load:
+            checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+            assert len(checkpoints) > 0, f"no checkpoint files found in {ckpt_dir}"
+
+            is_chunked = "layers_" in str(checkpoints[0])
+            if is_chunked:
+                checkpoint = load_chunked_checkpoints(checkpoints, n_layers, start_layer_idx)
+            else:
+                checkpoint = load_sharded_checkpionts(checkpoints, n_layers)
 
         model_args: ModelArgs = ModelArgs(
             max_seq_len=max_seq_len,
@@ -115,7 +160,6 @@ class Llama:
         )
         tokenizer = Tokenizer(model_path=tokenizer_path)
         model_args.vocab_size = tokenizer.n_words
-        torch.set_default_tensor_type(torch.cuda.HalfTensor)
         model = Transformer(model_args)
         model.load_state_dict(checkpoint, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
@@ -165,14 +209,14 @@ class Llama:
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_len)
 
         pad_id = self.tokenizer.pad_id
-        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long, device="cuda")
+        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long)
         for k, t in enumerate(prompt_tokens):
-            tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long, device="cuda")
+            tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long)
         if logprobs:
             token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
 
         prev_pos = 0
-        eos_reached = torch.tensor([False] * bsz, device="cuda")
+        eos_reached = torch.tensor([False] * bsz)
         input_text_mask = tokens != pad_id
         if min_prompt_len == total_len:
             logits = self.model.forward(tokens, prev_pos)
@@ -193,9 +237,7 @@ class Llama:
 
             next_token = next_token.reshape(-1)
             # only replace token if prompt has already been generated
-            next_token = torch.where(
-                input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
-            )
+            next_token = torch.where(input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token)
             tokens[:, cur_pos] = next_token
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
@@ -204,9 +246,7 @@ class Llama:
                     reduction="none",
                     ignore_index=pad_id,
                 )
-            eos_reached |= (~input_text_mask[:, cur_pos]) & (
-                next_token == self.tokenizer.eos_id
-            )
+            eos_reached |= (~input_text_mask[:, cur_pos]) & (next_token == self.tokenizer.eos_id)
             prev_pos = cur_pos
             if all(eos_reached):
                 break
@@ -318,17 +358,12 @@ class Llama:
         prompt_tokens = []
         unsafe_requests = []
         for dialog in dialogs:
-            unsafe_requests.append(
-                any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog])
-            )
+            unsafe_requests.append(any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog]))
             if dialog[0]["role"] == "system":
                 dialog = [
                     {
                         "role": dialog[1]["role"],
-                        "content": B_SYS
-                        + dialog[0]["content"]
-                        + E_SYS
-                        + dialog[1]["content"],
+                        "content": B_SYS + dialog[0]["content"] + E_SYS + dialog[1]["content"],
                     }
                 ] + dialog[2:]
             assert all([msg["role"] == "user" for msg in dialog[::2]]) and all(
@@ -351,9 +386,7 @@ class Llama:
                 ],
                 [],
             )
-            assert (
-                dialog[-1]["role"] == "user"
-            ), f"Last message must be from user, got {dialog[-1]['role']}"
+            assert dialog[-1]["role"] == "user", f"Last message must be from user, got {dialog[-1]['role']}"
             dialog_tokens += self.tokenizer.encode(
                 f"{B_INST} {(dialog[-1]['content']).strip()} {E_INST}",
                 bos=True,
@@ -373,16 +406,12 @@ class Llama:
                 {
                     "generation": {
                         "role": "assistant",
-                        "content": self.tokenizer.decode(t)
-                        if not unsafe
-                        else UNSAFE_ERROR,
+                        "content": self.tokenizer.decode(t) if not unsafe else UNSAFE_ERROR,
                     },
                     "tokens": [self.tokenizer.decode(x) for x in t],
                     "logprobs": logprobs_i,
                 }
-                for t, logprobs_i, unsafe in zip(
-                    generation_tokens, generation_logprobs, unsafe_requests
-                )
+                for t, logprobs_i, unsafe in zip(generation_tokens, generation_logprobs, unsafe_requests)
             ]
         return [
             {

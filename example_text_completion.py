@@ -6,6 +6,7 @@ import fire
 from llama import Llama
 from typing import List
 
+
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
@@ -14,6 +15,7 @@ def main(
     max_seq_len: int = 128,
     max_gen_len: int = 64,
     max_batch_size: int = 4,
+    skip_model_load=False,
 ):
     """
     Entry point of the program for generating text using a pretrained model.
@@ -28,12 +30,13 @@ def main(
         max_seq_len (int, optional): The maximum sequence length for input prompts. Defaults to 128.
         max_gen_len (int, optional): The maximum length of generated sequences. Defaults to 64.
         max_batch_size (int, optional): The maximum batch size for generating sequences. Defaults to 4.
-    """ 
+    """
     generator = Llama.build(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
+        skip_model_load=skip_model_load,
     )
 
     prompts: List[str] = [
@@ -43,11 +46,11 @@ def main(
         """A brief message congratulating the team on the launch:
 
         Hi everyone,
-        
+
         I just """,
         # Few shot prompt (providing a few examples before asking model to complete more);
         """Translate English to French:
-        
+
         sea otter => loutre de mer
         peppermint => menthe poivrée
         plush girafe => girafe peluche

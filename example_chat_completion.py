@@ -16,6 +16,7 @@ def main(
     max_seq_len: int = 512,
     max_batch_size: int = 8,
     max_gen_len: Optional[int] = None,
+    skip_model_load=False,
 ):
     """
     Entry point of the program for generating text using a pretrained model.
@@ -37,6 +38,7 @@ def main(
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
+        skip_model_load=skip_model_load,
     )
 
     dialogs: List[Dialog] = [
@@ -84,6 +86,7 @@ If a question does not make any sense, or is not factually coherent, explain why
             }
         ],
     ]
+    dialogs = dialogs[: min(max_batch_size, len(dialogs))]
     results = generator.chat_completion(
         dialogs,  # type: ignore
         max_gen_len=max_gen_len,
@@ -94,9 +97,7 @@ If a question does not make any sense, or is not factually coherent, explain why
     for dialog, result in zip(dialogs, results):
         for msg in dialog:
             print(f"{msg['role'].capitalize()}: {msg['content']}\n")
-        print(
-            f"> {result['generation']['role'].capitalize()}: {result['generation']['content']}"
-        )
+        print(f"> {result['generation']['role'].capitalize()}: {result['generation']['content']}")
         print("\n==================================\n")
 
 
