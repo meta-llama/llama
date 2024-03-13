@@ -126,5 +126,5 @@ See the [LICENSE](LICENSE) file, as well as our accompanying [Acceptable Use Pol
 
 For common questions, the FAQ can be found [here](https://ai.meta.com/llama/faq/) which will be kept up to date over time as new questions arise. 
 
-## Original LLaMA
+## Original Llama
 The repo for the original llama release is in the [`llama_v1`](https://github.com/facebookresearch/llama/tree/llama_v1) branch.
