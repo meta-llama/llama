@@ -68,6 +68,7 @@ class Llama:
             max_batch_size (int): Maximum batch size for inference.
             model_parallel_size (Optional[int], optional): Number of model parallel processes.
                 If not provided, it's determined from the environment. Defaults to None.
+            seed (int): Sets the seed for generating random numbers. Defaults to 1.
 
         Returns:
             Llama: An instance of the Llama class with the loaded model and tokenizer.
