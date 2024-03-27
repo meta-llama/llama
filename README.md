@@ -16,7 +16,7 @@ In order to download the model weights and tokenizer, please visit the [Meta web
 
 Once your request is approved, you will receive a signed URL over email. Then run the download.sh script, passing the URL provided when prompted to start the download.
 
-Pre-requisites: Make sure you have `wget` and `md5sum` installed. Then run the script: `./download.sh`.
+Pre-requisites: Make sure you have `wget` and `md5sum` installed. Then run the script: `./download.sh` if you're on a Unix system, or else `python download.py`.
 
 Keep in mind that the links expire after 24 hours and a certain amount of downloads. If you start seeing errors such as `403: Forbidden`, you can always re-request a link.
 
@@ -38,7 +38,7 @@ You can follow the steps below to quickly get up and running with Llama 2 models
 
 4. Once registered, you will get an email with a URL to download the models. You will need this URL when you run the download.sh script.
 
-5. Once you get the email, navigate to your downloaded llama repository and run the download.sh script. 
+5. Once you get the email, navigate to your downloaded llama repository and run the download.sh script for Unix platforms, or else the download.py script for other platforms. 
     - Make sure to grant execution permissions to the download.sh script
     - During this process, you will be prompted to enter the URL from the email. 
     - Do not use the “Copy Link” option but rather make sure to manually copy the link from the email.
