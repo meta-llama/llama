@@ -22,7 +22,7 @@ Keep in mind that the links expire after 24 hours and a certain amount of downlo
 
 ### Access to Hugging Face
 
-We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You must first request a download from the Meta website using the same email address as your Hugging Face account. After doing so, you can request access to any of the models on Hugging Face and within 1-2 days your account will be granted access to all versions.
+We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You can request access to the models by acknowledging the license and filling the form in the model card of a repo. After doing so, you should get access to all the Llama models of a version (Code Llama, Llama 2, or Llama Guard) within 1 hour.
 
 ## Quick Start
 
