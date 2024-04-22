@@ -32,6 +32,7 @@ class ModelArgs:
     multiple_of: int = 256  # make SwiGLU hidden layer size multiple of large power of 2
     ffn_dim_multiplier: Optional[float] = None
     norm_eps: float = 1e-5
+    rope_theta: Optional[float] = 10000
 
     max_batch_size: int = 32
     max_seq_len: int = 2048
@@ -470,6 +471,7 @@ class Transformer(nn.Module):
             # Adding this multiplier instead of using 4096 directly allows for dynamism of token lengths while training or fine-tuning.
             self.params.dim // self.params.n_heads,
             self.params.max_seq_len * 2,
+            self.params.rope_theta,
         )
 
     @torch.inference_mode()

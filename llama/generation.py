@@ -1,25 +1,20 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
-# This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
+# This software may be used and distributed in accordance with the terms of the Llama 3 Community License Agreement.
 
 import json
 import os
 import sys
 import time
 from pathlib import Path
-from typing import List, Literal, Optional, Tuple, TypedDict
+from typing import List, Optional, Tuple, TypedDict
+from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
+
 from .model import ModelArgs, Transformer
 from .tokenizer import Tokenizer
-from tqdm import tqdm
-
-Role = Literal["system", "user", "assistant"]
-
-
-class Message(TypedDict):
-    role: Role
-    content: str
+from .tokenizer3 import ChatFormat, Dialog, Message, Tokenizer3
 
 
 class CompletionPrediction(TypedDict, total=False):
@@ -32,16 +27,7 @@ class ChatPrediction(TypedDict, total=False):
     generation: Message
     tokens: List[str]  # not required
     logprobs: List[float]  # not required
-
-
-Dialog = List[Message]
-
-B_INST, E_INST = "[INST]", "[/INST]"
-B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
-
-SPECIAL_TAGS = [B_INST, E_INST, "<<SYS>>", "<</SYS>>"]
-UNSAFE_ERROR = "Error: special tags are not allowed as part of the prompt."
-
+    
 
 def load_chunked_checkpoints(checkpoints, n_layers, start_layer_idx):
     checkpoint = {}
@@ -61,7 +47,7 @@ def load_chunked_checkpoints(checkpoints, n_layers, start_layer_idx):
     return checkpoint
 
 
-def load_sharded_checkpionts(checkpoints, n_layers):
+def load_sharded_checkpoints(checkpoints, n_layers):
     checkpoint = {}
     print(f"Loading {len(checkpoints)} checkpoint files")
     for ckpt in tqdm(checkpoints):
@@ -85,9 +71,13 @@ def load_sharded_checkpionts(checkpoints, n_layers):
         if len(value) == 1 or "norm" in key:
             checkpoint[key] = value[0]
         else:
-            # cat_dim is index of the smallest dimension in value[0].shape
-            cat_dim = torch.argmin(torch.tensor(value[0].shape))
-            checkpoint[key] = torch.cat(value, dim=cat_dim)
+            if (key == "tok_embeddings.weight" or key == "output.weight") and value[0].shape[1] == 8192:
+                # Concatenate along dimension 0 for llama3 token embeddings weight and lm head
+                checkpoint[key] = torch.cat(value, dim=0)
+            else:
+                # cat_dim is index of the smallest dimension in value[0].shape
+                cat_dim = torch.argmin(torch.tensor(value[0].shape))
+                checkpoint[key] = torch.cat(value, dim=cat_dim)
 
     return checkpoint
 
@@ -106,7 +96,7 @@ class Llama:
         start_layer_idx=0,
     ) -> "Llama":
         """
-        Build a Llama instance by initializing and loading a pre-trained model.
+        Build a Llama instance by initializing and loading a model checkpoint.
 
         Args:
             ckpt_dir (str): Path to the directory containing checkpoint files.
@@ -126,7 +116,6 @@ class Llama:
         Note:
             This method initializes the distributed process group, sets the device to CUDA,
             and loads the pre-trained model and tokenizer.
-
         """
 
         # seed must be the same in all processes
@@ -151,15 +140,20 @@ class Llama:
             if is_chunked:
                 checkpoint = load_chunked_checkpoints(checkpoints, n_layers, start_layer_idx)
             else:
-                checkpoint = load_sharded_checkpionts(checkpoints, n_layers)
+                checkpoint = load_sharded_checkpoints(checkpoints, n_layers)
 
         model_args: ModelArgs = ModelArgs(
             max_seq_len=max_seq_len,
             max_batch_size=max_batch_size,
             **params,
         )
-        tokenizer = Tokenizer(model_path=tokenizer_path)
-        model_args.vocab_size = tokenizer.n_words
+        if model_args.vocab_size == 128256:
+            tokenizer = Tokenizer3(model_path=tokenizer_path)
+            assert model_args.vocab_size == tokenizer.n_words
+        else:
+            tokenizer = Tokenizer(model_path=tokenizer_path)
+            model_args.vocab_size = tokenizer.n_words
+        
         model = Transformer(model_args)
         model.load_state_dict(checkpoint, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
@@ -169,6 +163,7 @@ class Llama:
     def __init__(self, model: Transformer, tokenizer: Tokenizer):
         self.model = model
         self.tokenizer = tokenizer
+        self.formatter = ChatFormat(tokenizer)
 
     @torch.inference_mode()
     def generate(
@@ -227,6 +222,8 @@ class Llama:
                 ignore_index=pad_id,
             )
 
+        stop_tokens = torch.tensor(list(self.tokenizer.stop_tokens))
+
         for cur_pos in range(min_prompt_len, total_len):
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
             if temperature > 0:
@@ -237,7 +234,9 @@ class Llama:
 
             next_token = next_token.reshape(-1)
             # only replace token if prompt has already been generated
-            next_token = torch.where(input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token)
+            next_token = torch.where(
+                input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
+            )
             tokens[:, cur_pos] = next_token
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
@@ -246,7 +245,9 @@ class Llama:
                     reduction="none",
                     ignore_index=pad_id,
                 )
-            eos_reached |= (~input_text_mask[:, cur_pos]) & (next_token == self.tokenizer.eos_id)
+            eos_reached |= (~input_text_mask[:, cur_pos]) & (
+                torch.isin(next_token, stop_tokens)
+            )
             prev_pos = cur_pos
             if all(eos_reached):
                 break
@@ -261,11 +262,14 @@ class Llama:
             probs = None
             if logprobs:
                 probs = token_logprobs[i][start : len(prompt_tokens[i]) + max_gen_len]
-            # cut to eos tok if any
-            if self.tokenizer.eos_id in toks:
-                eos_idx = toks.index(self.tokenizer.eos_id)
-                toks = toks[:eos_idx]
-                probs = probs[:eos_idx] if logprobs else None
+            # cut to after eos tok if any
+            for stop_token in self.tokenizer.stop_tokens:
+                try:
+                    eos_idx = toks.index(stop_token)
+                    toks = toks[:eos_idx]
+                    probs = probs[:eos_idx] if logprobs else None
+                except ValueError:
+                    pass
             out_tokens.append(toks)
             out_logprobs.append(probs)
         return (out_tokens, out_logprobs if logprobs else None)
@@ -314,7 +318,7 @@ class Llama:
             return [
                 {
                     "generation": self.tokenizer.decode(t),
-                    "tokens": [self.tokenizer.decode(x) for x in t],
+                    "tokens": [self.tokenizer.decode([x]) for x in t],
                     "logprobs": logprobs_i,
                 }
                 for t, logprobs_i in zip(generation_tokens, generation_logprobs)
@@ -343,57 +347,17 @@ class Llama:
         Returns:
             List[ChatPrediction]: List of chat predictions, each containing the assistant's generated response.
 
-        Raises:
-            AssertionError: If the last message in a dialog is not from the user.
-            AssertionError: If the dialog roles are not in the required 'user', 'assistant', and optional 'system' order.
-
         Note:
             This method generates assistant responses for the provided conversational dialogs.
             It employs nucleus sampling to introduce controlled randomness in text generation.
             If logprobs is True, token log probabilities are computed for each generated token.
-
         """
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
-        prompt_tokens = []
-        unsafe_requests = []
-        for dialog in dialogs:
-            unsafe_requests.append(any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog]))
-            if dialog[0]["role"] == "system":
-                dialog = [
-                    {
-                        "role": dialog[1]["role"],
-                        "content": B_SYS + dialog[0]["content"] + E_SYS + dialog[1]["content"],
-                    }
-                ] + dialog[2:]
-            assert all([msg["role"] == "user" for msg in dialog[::2]]) and all(
-                [msg["role"] == "assistant" for msg in dialog[1::2]]
-            ), (
-                "model only supports 'system', 'user' and 'assistant' roles, "
-                "starting with 'system', then 'user' and alternating (u/a/u/a/u...)"
-            )
-            dialog_tokens: List[int] = sum(
-                [
-                    self.tokenizer.encode(
-                        f"{B_INST} {(prompt['content']).strip()} {E_INST} {(answer['content']).strip()} ",
-                        bos=True,
-                        eos=True,
-                    )
-                    for prompt, answer in zip(
-                        dialog[::2],
-                        dialog[1::2],
-                    )
-                ],
-                [],
-            )
-            assert dialog[-1]["role"] == "user", f"Last message must be from user, got {dialog[-1]['role']}"
-            dialog_tokens += self.tokenizer.encode(
-                f"{B_INST} {(dialog[-1]['content']).strip()} {E_INST}",
-                bos=True,
-                eos=False,
-            )
-            prompt_tokens.append(dialog_tokens)
 
+        prompt_tokens = [
+            self.formatter.encode_dialog_prompt(dialog) for dialog in dialogs
+        ]
         generation_tokens, generation_logprobs = self.generate(
             prompt_tokens=prompt_tokens,
             max_gen_len=max_gen_len,
@@ -406,21 +370,21 @@ class Llama:
                 {
                     "generation": {
                         "role": "assistant",
-                        "content": self.tokenizer.decode(t) if not unsafe else UNSAFE_ERROR,
+                        "content": self.tokenizer.decode(t),
                     },
-                    "tokens": [self.tokenizer.decode(x) for x in t],
+                    "tokens": [self.tokenizer.decode([x]) for x in t],
                     "logprobs": logprobs_i,
                 }
-                for t, logprobs_i, unsafe in zip(generation_tokens, generation_logprobs, unsafe_requests)
+                for t, logprobs_i in zip(generation_tokens, generation_logprobs)
             ]
         return [
             {
                 "generation": {
                     "role": "assistant",
-                    "content": self.tokenizer.decode(t) if not unsafe else UNSAFE_ERROR,
-                }
+                    "content": self.tokenizer.decode(t),
+                },
             }
-            for t, unsafe in zip(generation_tokens, unsafe_requests)
+            for t in generation_tokens
         ]
 
 
@@ -438,7 +402,6 @@ def sample_top_p(probs, p):
     Note:
         Top-p sampling selects the smallest set of tokens whose cumulative probability mass
         exceeds the threshold p. The distribution is renormalized based on the selected tokens.
-
     """
     probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
     probs_sum = torch.cumsum(probs_sort, dim=-1)
