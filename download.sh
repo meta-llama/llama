@@ -62,7 +62,8 @@ do
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
     echo "Checking checksums"
-    if [ "$CPU_ARCH" = "arm64" ]; then
+    CPU_ARCH=$(uname -m)
+    if [[ "$CPU_ARCH" == "arm64" ]]; then
       (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5 checklist.chk)
     else
       (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
