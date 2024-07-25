@@ -1,0 +1,8 @@
+blobfile
+jinja2
+json-strong-typing
+torch
+tiktoken
+fairscale
+pydantic==1.10.13
+pydantic_core==2.18.2
