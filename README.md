@@ -59,7 +59,7 @@ You can follow the steps below to quickly get up and running with Llama 2 models
 
 6. Once the model/s you want have been downloaded, you can run the model locally using the command below:
 ```bash
-torchrun --nproc_per_node 1 example_chat_completion.py \
+!torchrun --nproc_per_node 1 example_chat_completion.py \
     --ckpt_dir llama-2-7b-chat/ \
     --tokenizer_path tokenizer.model \
     --max_seq_len 512 --max_batch_size 6
