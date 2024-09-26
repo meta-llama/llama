@@ -2,3 +2,4 @@ torch
 fairscale
 fire
 sentencepiece
+einops
