@@ -38,6 +38,15 @@ Keep in mind that the links expire after 24 hours and a certain amount of downlo
 
 We are also providing downloads on [Hugging Face](https://huggingface.co/meta-llama). You can request access to the models by acknowledging the license and filling the form in the model card of a repo. After doing so, you should get access to all the Llama models of a version (Code Llama, Llama 2, or Llama Guard) within 1 hour.
 
+### Pre-requisites
+- **Python**: Version 3.8 or higher
+- **PyTorch**: Version 1.12.0 or higher with CUDA 11.3
+- **CUDA Requirements**: 
+  - 7B model: ~12 GB GPU memory
+  - 13B model: ~24 GB GPU memory
+  - 70B model: ~80 GB GPU memory
+- Ensure `wget` and `md5sum` are installed for downloading model weights.
+
 ## Quick Start
 
 You can follow the steps below to quickly get up and running with Llama 2 models. These steps will let you run quick inference locally. For more examples, see the [Llama 2 recipes repository](https://github.com/facebookresearch/llama-recipes). 
