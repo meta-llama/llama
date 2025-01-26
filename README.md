@@ -5,7 +5,7 @@ Thank you for developing with Llama models. As part of the Llama 3.1 release, we
 - [PurpleLlama](https://github.com/meta-llama/PurpleLlama) - Key component of Llama Stack focusing on safety risks and inference time mitigations 
 - [llama-toolchain](https://github.com/meta-llama/llama-toolchain) - Model development (inference/fine-tuning/safety shields/synthetic data generation) interfaces and canonical implementations
 - [llama-agentic-system](https://github.com/meta-llama/llama-agentic-system) - E2E standalone Llama Stack system, along with opinionated underlying interface, that enables creation of agentic applications
-- [llama-recipes](https://github.com/meta-llama/llama-recipes) - Community driven scripts and integrations
+- [llama-cookbook](https://github.com/meta-llama/llama-recipes) - Community driven scripts and integrations
 
 If you have any questions, please feel free to file an issue on any of the above repos and we will do our best to respond in a timely manner. 
 
@@ -18,7 +18,7 @@ We are unlocking the power of large language models. Llama 2 is now accessible t
 
 This release includes model weights and starting code for pre-trained and fine-tuned Llama language models — ranging from 7B to 70B parameters.
 
-This repository is intended as a minimal example to load [Llama 2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/) models and run inference. For more detailed examples leveraging Hugging Face, see [llama-recipes](https://github.com/facebookresearch/llama-recipes/).
+This repository is intended as a minimal example to load [Llama 2](https://ai.meta.com/research/publications/llama-2-open-foundation-and-fine-tuned-chat-models/) models and run inference. For more detailed examples leveraging Hugging Face, see [llama-cookbook](https://github.com/facebookresearch/llama-recipes/).
 
 ## Updates post-launch
 
@@ -40,7 +40,7 @@ We are also providing downloads on [Hugging Face](https://huggingface.co/meta-ll
 
 ## Quick Start
 
-You can follow the steps below to quickly get up and running with Llama 2 models. These steps will let you run quick inference locally. For more examples, see the [Llama 2 recipes repository](https://github.com/facebookresearch/llama-recipes). 
+You can follow the steps below to quickly get up and running with Llama 2 models. These steps will let you run quick inference locally. For more examples, see the [Llama 2 cookbook repository](https://github.com/facebookresearch/llama-recipes). 
 
 1. In a conda env with PyTorch / CUDA available clone and download this repository.
 
@@ -100,7 +100,7 @@ torchrun --nproc_per_node 1 example_text_completion.py \
 The fine-tuned models were trained for dialogue applications. To get the expected features and performance for them, a specific formatting defined in [`chat_completion`](https://github.com/facebookresearch/llama/blob/main/llama/generation.py#L212)
 needs to be followed, including the `INST` and `<<SYS>>` tags, `BOS` and `EOS` tokens, and the whitespaces and breaklines in between (we recommend calling `strip()` on inputs to avoid double-spaces).
 
-You can also deploy additional classifiers for filtering out inputs and outputs that are deemed unsafe. See the llama-recipes repo for [an example](https://github.com/facebookresearch/llama-recipes/blob/main/examples/inference.py) of how to add a safety checker to the inputs and outputs of your inference code.
+You can also deploy additional classifiers for filtering out inputs and outputs that are deemed unsafe. See the llama-cookbook repo for [an example](https://github.com/facebookresearch/llama-recipes/blob/main/examples/inference.py) of how to add a safety checker to the inputs and outputs of your inference code.
 
 Examples using llama-2-7b-chat:
 
