@@ -6,6 +6,7 @@
 set -e
 
 read -p "Enter the URL from email: " PRESIGNED_URL
+PRESIGNED_URL=$(echo "$PRESIGNED_URL" | tr -d '\"') # drops double quotes for windows
 echo ""
 read -p "Enter the list of models to download without spaces (7B,13B,70B,7B-chat,13B-chat,70B-chat), or press Enter for all: " MODEL_SIZE
 TARGET_FOLDER="."             # where all files should end up
