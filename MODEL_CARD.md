@@ -38,7 +38,7 @@ Llama 2|*A new mix of publicly available online data*|70B|4k|&#10004;|2.0T|1.5 x
 **Note: Developers may fine-tune Llama 2 models for languages beyond English provided they comply with the Llama 2 Community License and the Acceptable Use Policy.
 
 # **Hardware and Software**
-**Training Factors** We used custom training libraries, Meta's Research Super Cluster, and production clusters for pretraining. Fine-tuning, annotation, and evaluation were also performed on third-party cloud compute.
+**Training Factors** We used custom training libraries, Meta's Research Super Cluster, and production clusters for pretraining. Fine-tuning, annotation, and evaluation were also performed on third-party cloud computing.
 
 **Carbon Footprint** Pretraining utilized a cumulative 3.3M GPU hours of computation on hardware of type A100-80GB (TDP of 350-400W). Estimated total emissions were 539 tCO2eq, 100% of which were offset by Meta’s sustainability program.
 
