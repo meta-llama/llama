@@ -168,12 +168,14 @@ class Llama:
         tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long, device="cuda")
         for k, t in enumerate(prompt_tokens):
             tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long, device="cuda")
+            
         if logprobs:
             token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
 
         prev_pos = 0
         eos_reached = torch.tensor([False] * bsz, device="cuda")
         input_text_mask = tokens != pad_id
+
         if min_prompt_len == total_len:
             logits = self.model.forward(tokens, prev_pos)
             token_logprobs = -F.cross_entropy(
@@ -184,7 +186,7 @@ class Llama:
             )
 
         for cur_pos in range(min_prompt_len, total_len):
-            logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
+            logits = self.model.forward(tokens[:, :cur_pos], prev_pos)
             if temperature > 0:
                 probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
                 next_token = sample_top_p(probs, top_p)
@@ -197,6 +199,7 @@ class Llama:
                 input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
             )
             tokens[:, cur_pos] = next_token
+
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
                     input=logits.transpose(1, 2),
@@ -204,6 +207,7 @@ class Llama:
                     reduction="none",
                     ignore_index=pad_id,
                 )
+
             eos_reached |= (~input_text_mask[:, cur_pos]) & (
                 next_token == self.tokenizer.eos_id
             )
@@ -213,22 +217,26 @@ class Llama:
 
         if logprobs:
             token_logprobs = token_logprobs.tolist()
+            
         out_tokens, out_logprobs = [], []
         for i, toks in enumerate(tokens.tolist()):
-            # cut to max gen len
             start = 0 if echo else len(prompt_tokens[i])
             toks = toks[start : len(prompt_tokens[i]) + max_gen_len]
             probs = None
+            
             if logprobs:
                 probs = token_logprobs[i][start : len(prompt_tokens[i]) + max_gen_len]
-            # cut to eos tok if any
+            
             if self.tokenizer.eos_id in toks:
                 eos_idx = toks.index(self.tokenizer.eos_id)
                 toks = toks[:eos_idx]
                 probs = probs[:eos_idx] if logprobs else None
+                
             out_tokens.append(toks)
             out_logprobs.append(probs)
+            
         return (out_tokens, out_logprobs if logprobs else None)
+
 
     def text_completion(
         self,

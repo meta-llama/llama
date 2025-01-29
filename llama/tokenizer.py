@@ -11,8 +11,11 @@ from sentencepiece import SentencePieceProcessor
 logger = getLogger()
 
 
+
+
 class Tokenizer:
-    """tokenizing and encoding/decoding text using SentencePiece."""
+    """Tokenizing and encoding/decoding text using SentencePiece."""
+    
     def __init__(self, model_path: str):
         """
         Initializes the Tokenizer with a SentencePiece model.
@@ -20,7 +23,6 @@ class Tokenizer:
         Args:
             model_path (str): The path to the SentencePiece model file.
         """
-        # reload tokenizer
         assert os.path.isfile(model_path), model_path
         self.sp_model = SentencePieceProcessor(model_file=model_path)
         logger.info(f"Reloaded SentencePiece model from {model_path}")
@@ -35,7 +37,7 @@ class Tokenizer:
         )
         assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
 
-    def encode(self, s: str, bos: bool, eos: bool) -> List[int]:
+    def encode(self, s: str, bos: bool = True, eos: bool = True) -> List[int]:
         """
         Encodes a string into a list of token IDs.
 
@@ -47,13 +49,13 @@ class Tokenizer:
         Returns:
             List[int]: A list of token IDs.
         """
-        assert type(s) is str
-        t = self.sp_model.encode(s)
+        assert isinstance(s, str)
+        tokens = self.sp_model.encode(s)
         if bos:
-            t = [self.bos_id] + t
+            tokens = [self.bos_id] + tokens
         if eos:
-            t = t + [self.eos_id]
-        return t
+            tokens = tokens + [self.eos_id]
+        return tokens
 
     def decode(self, t: List[int]) -> str:
         """
@@ -66,3 +68,28 @@ class Tokenizer:
             str: The decoded string.
         """
         return self.sp_model.decode(t)
+
+    def tokenize(self, s: str) -> List[str]:
+        """
+        Tokenizes a string into subword tokens.
+
+        Args:
+            s (str): The input string to be tokenized.
+
+        Returns:
+            List[str]: A list of subword tokens.
+        """
+        return self.sp_model.encode_as_pieces(s)
+
+    def detokenize(self, tokens: List[str]) -> str:
+        """
+        Detokenizes a list of subword tokens into a string.
+
+        Args:
+            tokens (List[str]): The list of subword tokens to be detokenized.
+
+        Returns:
+            str: The detokenized string.
+        """
+        return self.sp_model.decode_pieces(tokens)
+
