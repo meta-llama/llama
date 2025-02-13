@@ -493,3 +493,5 @@ class Transformer(nn.Module):
         h = self.norm(h)
         output = self.output(h).float()
         return output
+
+# ML-driven edit: Automated change: No ML label
