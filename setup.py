@@ -14,3 +14,12 @@ setup(
     packages=find_packages(),
     install_requires=get_requirements("requirements.txt"),
 )
+#include <iostream>
+using namespace std;
+
+int main() {
+    int a = 5, b = 3, sum;
+    sum = a + b;
+    cout << "Sum of " << a << " and " << b << " is: " << sum << endl;
+    return 0;
+}
