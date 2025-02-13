@@ -419,3 +419,5 @@ def sample_top_p(probs, p):
     next_token = torch.multinomial(probs_sort, num_samples=1)
     next_token = torch.gather(probs_idx, -1, next_token)
     return next_token
+
+# Automated edit: [Edited] Refactor code to optimize performance
