@@ -11,6 +11,8 @@ If you have any questions, please feel free to file an issue on any of the above
 
 Thank you!
 
+https://www.llama.com/resources/cookbook/how-to-build-notebook-llama/
+
 
 # (Deprecated) Llama 2
 
