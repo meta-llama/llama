@@ -26,9 +26,82 @@ class ModelArgs:
     multiple_of: int = 256  # make SwiGLU hidden layer size multiple of large power of 2
     ffn_dim_multiplier: Optional[float] = None
     norm_eps: float = 1e-5
+    rope_theta: float = 10000.0
 
     max_batch_size: int = 32
     max_seq_len: int = 2048
+
+
+def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+    """
+    Precompute the frequency tensor for complex exponentials (cis) with given dimensions.
+
+    This function calculates a frequency tensor with complex exponentials using the given dimension 'dim'
+    and the end index 'end'. The 'theta' parameter scales the frequencies.
+    The returned tensor contains complex values in complex64 data type.
+
+    Args:
+        dim (int): Dimension of the frequency tensor.
+        end (int): End index for precomputing frequencies.
+        theta (float, optional): Scaling factor for frequency computation. Defaults to 10000.0.
+
+    Returns:
+        torch.Tensor: Precomputed frequency tensor with complex exponentials.
+
+    
+        
+
+    """
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+    t = torch.arange(end, device=freqs.device)  # type: ignore
+    freqs = torch.outer(t, freqs).float()  # type: ignore
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
+    return freqs_cis
+
+
+
+class Transformer(nn.Module):
+    def __init__(self, params: ModelArgs):
+        """
+        Initialize a Transformer model.
+
+        Args:
+            params (ModelArgs): Model configuration parameters.
+
+        Attributes:
+            params (ModelArgs): Model configuration parameters.
+            vocab_size (int): Vocabulary size.
+            n_layers (int): Number of layers in the model.
+            tok_embeddings (ParallelEmbedding): Token embeddings.
+            layers (torch.nn.ModuleList): List of Transformer blocks.
+            norm (RMSNorm): Layer normalization for the model output.
+            output (ColumnParallelLinear): Linear layer for final output.
+            freqs_cis (torch.Tensor): Precomputed cosine and sine frequencies.
+
+        """
+        super().__init__()
+        self.params = params
+        self.vocab_size = params.vocab_size
+        self.n_layers = params.n_layers
+
+        self.tok_embeddings = ParallelEmbedding(
+            params.vocab_size, params.dim, init_method=lambda x: x
+        )
+
+        self.layers = torch.nn.ModuleList()
+        for layer_id in range(params.n_layers):
+            self.layers.append(TransformerBlock(layer_id, params))
+
+        self.norm = RMSNorm(params.dim, eps=params.norm_eps)
+        self.output = ColumnParallelLinear(
+            params.dim, params.vocab_size, bias=False, init_method=lambda x: x
+        )
+
+        self.freqs_cis = precompute_freqs_cis(
+            self.params.dim // self.params.n_heads,
+            self.params.max_seq_len * 2,
+            theta=params.rope_theta,
+        )
 
 
 class RMSNorm(torch.nn.Module):
@@ -448,8 +521,6 @@ class Transformer(nn.Module):
         )
 
         self.freqs_cis = precompute_freqs_cis(
-            # Note that self.params.max_seq_len is multiplied by 2 because the token limit for the Llama 2 generation of models is 4096. 
-            # Adding this multiplier instead of using 4096 directly allows for dynamism of token lengths while training or fine-tuning.
             self.params.dim // self.params.n_heads, self.params.max_seq_len * 2
         )
 
