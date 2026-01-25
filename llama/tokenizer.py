@@ -3,6 +3,7 @@
 
 import os
 from logging import getLogger
+from pathlib import Path
 from typing import List
 
 from sentencepiece import SentencePieceProcessor
@@ -12,28 +13,76 @@ logger = getLogger()
 
 
 class Tokenizer:
-    """tokenizing and encoding/decoding text using SentencePiece."""
+    """tokenizing and encoding/decoding text using SentencePiece or Tiktoken."""
     def __init__(self, model_path: str):
         """
-        Initializes the Tokenizer with a SentencePiece model.
+        Initializes the Tokenizer with a SentencePiece model or Tiktoken model file.
 
         Args:
-            model_path (str): The path to the SentencePiece model file.
+            model_path (str): The path to the SentencePiece model file or Tiktoken model file.
         """
-        # reload tokenizer
-        assert os.path.isfile(model_path), model_path
-        self.sp_model = SentencePieceProcessor(model_file=model_path)
-        logger.info(f"Reloaded SentencePiece model from {model_path}")
+        assert os.path.isfile(model_path), f"Tokenizer model not found: {model_path}"
+        
+        self.sp_model = None
+        self.tiktoken_model = None
 
-        # BOS / EOS token IDs
-        self.n_words: int = self.sp_model.vocab_size()
-        self.bos_id: int = self.sp_model.bos_id()
-        self.eos_id: int = self.sp_model.eos_id()
-        self.pad_id: int = self.sp_model.pad_id()
+        if model_path.endswith(".model"):
+            self.sp_model = SentencePieceProcessor(model_file=model_path)
+            self.n_words: int = self.sp_model.vocab_size()
+            self.bos_id: int = self.sp_model.bos_id()
+            self.eos_id: int = self.sp_model.eos_id()
+            self.pad_id: int = self.sp_model.pad_id()
+            logger.info(f"Loaded SentencePiece model from {model_path}")
+        else:
+            try:
+                import tiktoken
+                from tiktoken.load import load_tiktoken_bpe
+            except ImportError as e:
+                logger.error("Tiktoken not installed. Install with: pip install tiktoken")
+                raise ImportError(
+                    "Tiktoken is required for Llama 3 models. Install with: pip install tiktoken"
+                ) from e
+            
+            mergeable_ranks = load_tiktoken_bpe(model_path)
+            
+            num_base_tokens = len(mergeable_ranks)
+            special_tokens = [
+                "<|begin_of_text|>",
+                "<|end_of_text|>",
+                "<|reserved_special_token_0|>",
+                "<|reserved_special_token_1|>",
+                "<|finetune_right_pad_id|>",
+                "<|step_id|>",
+                "<|start_header_id|>",
+                "<|end_header_id|>",
+                "<|eom_id|>",
+                "<|eot_id|>",
+                "<|python_tag|>",
+            ]
+            reserved_tokens = [
+                f"<|reserved_special_token_{2+i}|>"
+                for i in range(256 - len(special_tokens))
+            ]
+            special_tokens.extend(reserved_tokens)
+            
+            self.tiktoken_model = tiktoken.Encoding(
+                name=Path(model_path).name,
+                pat_str=r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",
+                mergeable_ranks=mergeable_ranks,
+                special_tokens={
+                    token: num_base_tokens + i for i, token in enumerate(special_tokens)
+                },
+            )
+            self.n_words = self.tiktoken_model.n_vocab
+            self.bos_id = self.tiktoken_model.encode_single_token("<|begin_of_text|>")
+            self.eos_id = self.tiktoken_model.encode_single_token("<|end_of_text|>")
+            self.pad_id = self.tiktoken_model.encode_single_token("<|finetune_right_pad_id|>")
+            
+            logger.info(f"Loaded Tiktoken model from {model_path}")
+
         logger.info(
             f"#words: {self.n_words} - BOS ID: {self.bos_id} - EOS ID: {self.eos_id}"
         )
-        assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
 
     def encode(self, s: str, bos: bool, eos: bool) -> List[int]:
         """
@@ -47,8 +96,11 @@ class Tokenizer:
         Returns:
             List[int]: A list of token IDs.
         """
-        assert type(s) is str
-        t = self.sp_model.encode(s)
+        if not isinstance(s, str):
+            raise TypeError(f"Expected str, got {type(s)}")
+        
+        t = self.sp_model.encode(s) if self.sp_model else self.tiktoken_model.encode(s)
+            
         if bos:
             t = [self.bos_id] + t
         if eos:
@@ -65,4 +117,7 @@ class Tokenizer:
         Returns:
             str: The decoded string.
         """
-        return self.sp_model.decode(t)
+        if self.sp_model:
+            return self.sp_model.decode(t)
+        else:
+            return self.tiktoken_model.decode(t)

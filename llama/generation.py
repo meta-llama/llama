@@ -48,6 +48,84 @@ SPECIAL_TAGS = [B_INST, E_INST, "<<SYS>>", "<</SYS>>"]
 UNSAFE_ERROR = "Error: special tags are not allowed as part of the prompt."
 
 
+
+
+class ChatFormatter:
+    def format_dialog(self, dialog: Dialog) -> List[int]:
+        raise NotImplementedError
+
+
+class Llama2Formatter(ChatFormatter):
+    def __init__(self, tokenizer: Tokenizer):
+        self.tokenizer = tokenizer
+
+    def format_dialog(self, dialog: Dialog) -> List[int]:
+        if not dialog:
+            raise ValueError("Dialog cannot be empty")
+        
+        if dialog[0]["role"] == "system":
+            if len(dialog) < 2:
+                raise ValueError("System message must be followed by a user message")
+            dialog = [
+                {
+                    "role": dialog[1]["role"],
+                    "content": B_SYS + dialog[0]["content"] + E_SYS + dialog[1]["content"],
+                }
+            ] + dialog[2:]
+        
+        dialog_tokens = []
+        for prompt, answer in zip(dialog[::2], dialog[1::2]):
+            dialog_tokens.extend(
+                self.tokenizer.encode(
+                    f"{B_INST} {prompt['content'].strip()} {E_INST} {answer['content'].strip()} ",
+                    bos=True,
+                    eos=True,
+                )
+            )
+        
+        if dialog[-1]["role"] != "user":
+            raise ValueError(f"Last message must be from user, got {dialog[-1]['role']}")
+        
+        dialog_tokens.extend(
+            self.tokenizer.encode(
+                f"{B_INST} {dialog[-1]['content'].strip()} {E_INST}",
+                bos=True,
+                eos=False,
+            )
+        )
+        return dialog_tokens
+
+
+class Llama3Formatter(ChatFormatter):
+    def __init__(self, tokenizer: Tokenizer):
+        self.tokenizer = tokenizer
+
+    def format_dialog(self, dialog: Dialog) -> List[int]:
+        if not dialog:
+            raise ValueError("Dialog cannot be empty")
+        
+        tokens = []
+        for i, msg in enumerate(dialog):
+            if "role" not in msg or "content" not in msg:
+                raise ValueError(f"Message {i} missing 'role' or 'content' field")
+            
+            is_first = i == 0
+            formatted_msg = (
+                f"<|start_header_id|>{msg['role']}<|end_header_id|>\n\n"
+                f"{msg['content']}<|eot_id|>"
+            )
+            tokens.extend(self.tokenizer.encode(formatted_msg, bos=is_first, eos=False))
+        
+        tokens.extend(
+            self.tokenizer.encode(
+                "<|start_header_id|>assistant<|end_header_id|>\n\n",
+                bos=False,
+                eos=False,
+            )
+        )
+        return tokens
+
+
 class Llama:
     @staticmethod
     def build(
@@ -288,6 +366,7 @@ class Llama:
         top_p: float = 0.9,
         max_gen_len: Optional[int] = None,
         logprobs: bool = False,
+        formatter_override: Optional[ChatFormatter] = None,
     ) -> List[ChatPrediction]:
         """
         Generate assistant responses for a list of conversational dialogs using the language generation model.
@@ -299,66 +378,32 @@ class Llama:
             max_gen_len (Optional[int], optional): Maximum length of the generated response sequence.
                 If not provided, it's set to the model's maximum sequence length minus 1.
             logprobs (bool, optional): Flag indicating whether to compute token log probabilities. Defaults to False.
+            formatter_override (Optional[ChatFormatter]): Override the default formatter.
 
         Returns:
             List[ChatPrediction]: List of chat predictions, each containing the assistant's generated response.
-
-        Raises:
-            AssertionError: If the last message in a dialog is not from the user.
-            AssertionError: If the dialog roles are not in the required 'user', 'assistant', and optional 'system' order.
-
-        Note:
-            This method generates assistant responses for the provided conversational dialogs.
-            It employs nucleus sampling to introduce controlled randomness in text generation.
-            If logprobs is True, token log probabilities are computed for each generated token.
-
         """
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
+            
+        if formatter_override:
+            formatter = formatter_override
+        elif hasattr(self.tokenizer, "tiktoken_model") and self.tokenizer.tiktoken_model is not None:
+             formatter = Llama3Formatter(self.tokenizer)
+        else:
+             formatter = Llama2Formatter(self.tokenizer)
+             
         prompt_tokens = []
         unsafe_requests = []
         for dialog in dialogs:
-            unsafe_requests.append(
-                any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog])
-            )
-            if dialog[0]["role"] == "system":
-                dialog = [
-                    {
-                        "role": dialog[1]["role"],
-                        "content": B_SYS
-                        + dialog[0]["content"]
-                        + E_SYS
-                        + dialog[1]["content"],
-                    }
-                ] + dialog[2:]
-            assert all([msg["role"] == "user" for msg in dialog[::2]]) and all(
-                [msg["role"] == "assistant" for msg in dialog[1::2]]
-            ), (
-                "model only supports 'system', 'user' and 'assistant' roles, "
-                "starting with 'system', then 'user' and alternating (u/a/u/a/u...)"
-            )
-            dialog_tokens: List[int] = sum(
-                [
-                    self.tokenizer.encode(
-                        f"{B_INST} {(prompt['content']).strip()} {E_INST} {(answer['content']).strip()} ",
-                        bos=True,
-                        eos=True,
-                    )
-                    for prompt, answer in zip(
-                        dialog[::2],
-                        dialog[1::2],
-                    )
-                ],
-                [],
-            )
-            assert (
-                dialog[-1]["role"] == "user"
-            ), f"Last message must be from user, got {dialog[-1]['role']}"
-            dialog_tokens += self.tokenizer.encode(
-                f"{B_INST} {(dialog[-1]['content']).strip()} {E_INST}",
-                bos=True,
-                eos=False,
-            )
+            if isinstance(formatter, Llama2Formatter):
+                unsafe_requests.append(
+                    any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog])
+                )
+            else:
+                unsafe_requests.append(False)
+            
+            dialog_tokens = formatter.format_dialog(dialog)
             prompt_tokens.append(dialog_tokens)
 
         generation_tokens, generation_logprobs = self.generate(
