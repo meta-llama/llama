@@ -1,3 +1,15 @@
+## Fork additions (evaluation + CI)
+
+This repository is a fork of Meta’s Llama inference code. I added a lightweight NLP evaluation layer on top of text generation to support quick, reproducible regression checks:
+- Reference-based metrics: BLEU, ROUGE-L, and simple diversity measures
+- A minimal unit test suite to validate evaluation behavior
+- A minimal GitHub Actions workflow for automated checks (fork workflows may require maintainer approval upstream)
+
+Where to look:
+- `example_text_completion.py` (adds `--reference` + metric reporting)
+- README diff summary near the bottom (documents the evaluation layer)
+- Upstream PR: #1408 (documentation + eval utilities/tests/CI notes)
+
 ## **Note of deprecation**
 
 Thank you for developing with Llama models. As part of the Llama 3.1 release, we’ve consolidated GitHub repos and added some additional repos as we’ve expanded Llama’s functionality into being an e2e Llama Stack. Please use the following repos going forward:
@@ -95,6 +107,18 @@ torchrun --nproc_per_node 1 example_text_completion.py \
     --max_seq_len 128 --max_batch_size 4
 ```
 
+#### Optional evaluation metrics
+
+`example_text_completion.py` accepts an optional `--reference` string to evaluate generations with simple BLEU, ROUGE-L, and diversity metrics. For example:
+
+```
+torchrun --nproc_per_node 1 example_text_completion.py \
+    --ckpt_dir llama-2-7b/ \
+    --tokenizer_path tokenizer.model \
+    --max_seq_len 128 --max_batch_size 4 \
+    --reference="The meaning of life is to learn and grow."
+```
+
 ### Fine-tuned Chat Models
 
 The fine-tuned models were trained for dialogue applications. To get the expected features and performance for them, a specific formatting defined in [`chat_completion`](https://github.com/facebookresearch/llama/blob/main/llama/generation.py#L212)
@@ -140,3 +164,30 @@ For common questions, the FAQ can be found [here](https://ai.meta.com/llama/faq/
 
 ## Original Llama
 The repo for the original llama release is in the [`llama_v1`](https://github.com/facebookresearch/llama/tree/llama_v1) branch.
+
+
+diff --git a/README.md b/README.md
+index 0000000..1111111 100644
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,26 @@
+-Note of deprecation
++## Note of deprecation
+ Thank you for developing with Llama models. As part of the Llama 3.1 release, we’ve consolidated GitHub repos and added some additional repos as we’ve expanded Llama’s functionality into being an e2e Llama Stack. Please use the following repos going forward:
+ 
+ llama-models - Central repo for the foundation models including basic utilities, model cards, license and use policies
+ PurpleLlama - Key component of Llama Stack focusing on safety risks and inference time mitigations
+ llama-toolchain - Model development (inference/fine-tuning/safety shields/synthetic data generation) interfaces and canonical implementations
+ llama-agentic-system - E2E standalone Llama Stack system, along with opinionated underlying interface, that enables creation of agentic applications
+ llama-cookbook - Community driven scripts and integrations
+ If you have any questions, please feel free to file an issue on any of the above repos and we will do our best to respond in a timely manner.
+ 
+ Thank you!
+ 
+**Important:** This repository is **deprecated** and is maintained primarily for historical reference and minimal Llama 2 example code.  
+For current Llama releases and the end-to-end Llama Stack, please use the repositories listed above.
+
+**Scope note:** The instructions and examples below apply to **Llama 2** only and may not reflect the latest best practices for newer releases.
+
+ (Deprecated) Llama 2
+ We are unlocking the power of large language models. Llama 2 is now accessible to individuals, creators, researchers, and businesses of all sizes so that they can experiment, innovate, and scale their ideas responsibly.
