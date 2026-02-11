@@ -95,7 +95,9 @@ class Llama:
         torch.manual_seed(seed)
 
         if local_rank > 0:
-            sys.stdout = open(os.devnull, "w")
+            devnull_fd = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull_fd, sys.stdout.fileno())
+            os.close(devnull_fd)
 
         start_time = time.time()
         checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
