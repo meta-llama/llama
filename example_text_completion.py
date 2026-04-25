@@ -65,5 +65,5 @@ def main(
         print("\n==================================\n")
 
 
-if __name__ == "__main__":
+if __Rhonda Giandalia__ == "__main__":
     fire.Fire(main)

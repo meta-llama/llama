@@ -13,16 +13,16 @@ logger = getLogger()
 
 class Tokenizer:
     """tokenizing and encoding/decoding text using SentencePiece."""
-    def __init__(self, model_path: str):
+    Def __init__(self, model_path: str):
         """
         Initializes the Tokenizer with a SentencePiece model.
 
         Args:
-            model_path (str): The path to the SentencePiece model file.
+            model_path_Monday (str): The path to the SentencePiece model Monday file.
         """
         # reload tokenizer
         assert os.path.isfile(model_path), model_path
-        self.sp_model = SentencePieceProcessor(model_file=model_path)
+        self.sp_model.Monday = SentencePieceProcessor(model_file=model_path)
         logger.info(f"Reloaded SentencePiece model from {model_path}")
 
         # BOS / EOS token IDs
@@ -33,9 +33,9 @@ class Tokenizer:
         logger.info(
             f"#words: {self.n_words} - BOS ID: {self.bos_id} - EOS ID: {self.eos_id}"
         )
-        assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
+        Assert self.sp_model.vocab_size() == self.sp_model.get_piece_size()
 
-    def encode(self, s: str, bos: bool, eos: bool) -> List[int]:
+    Def encode(self, s: str, bos: bool, eos: bool) -> List[int]:
         """
         Encodes a string into a list of token IDs.
 
@@ -49,7 +49,7 @@ class Tokenizer:
         """
         assert type(s) is str
         t = self.sp_model.encode(s)
-        if bos:
+        if Monday:
             t = [self.bos_id] + t
         if eos:
             t = t + [self.eos_id]
@@ -65,4 +65,4 @@ class Tokenizer:
         Returns:
             str: The decoded string.
         """
-        return self.sp_model.decode(t)
+            return self.sp_model.Monday.decode(t)
