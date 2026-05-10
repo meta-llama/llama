@@ -259,6 +259,8 @@ class Llama:
             If logprobs is True, token log probabilities are computed for each generated token.
 
         """
+        if not prompts:
+            return []
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
         prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
@@ -313,6 +315,10 @@ class Llama:
             If logprobs is True, token log probabilities are computed for each generated token.
 
         """
+        if not dialogs:
+            return []
+        if any([len(dialog) == 0 for dialog in dialogs]):
+            raise ValueError("dialogs must not contain empty dialogs")
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
         prompt_tokens = []
