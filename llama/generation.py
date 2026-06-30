@@ -5,8 +5,11 @@ import json
 import os
 import sys
 import time
+import re
+import unicodedata
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, TypedDict
+
 
 import torch
 import torch.nn.functional as F
@@ -44,8 +47,95 @@ Dialog = List[Message]
 B_INST, E_INST = "[INST]", "[/INST]"
 B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
 
-SPECIAL_TAGS = [B_INST, E_INST, "<<SYS>>", "<</SYS>>"]
-UNSAFE_ERROR = "Error: special tags are not allowed as part of the prompt."
+def normalize_for_safety_check(text: str) -> str:
+    """
+    Normalize text to catch Unicode evasion attempts.
+    
+    Removes:
+    - Zero-width characters (U+200B, U+200C, U+200D, etc.)
+    - HTML entities
+    - Excessive whitespace
+    
+    Args:
+        text: Input text to normalize
+        
+    Returns:
+        Normalized text for safety checking
+    """
+    # Remove zero-width characters
+    text = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff]', '', text)
+    
+    # Normalize unicode (NFD = decomposed form catches more tricks)
+    text = unicodedata.normalize('NFKD', text)
+    
+    # Remove excessive whitespace and convert to lowercase for comparison
+    text = re.sub(r'\s+', ' ', text.strip()).lower()
+    
+    return text
+
+def check_for_prompt_injection(msg: dict) -> bool:
+    """
+    Check if a message contains prompt injection attempts.
+    
+    Checks both 'content' and 'role' fields for injection markers.
+    Uses normalized text comparison to catch evasion attempts.
+    
+    Args:
+        msg: Message dict with 'role' and 'content' keys
+        
+    Returns:
+        True if injection detected, False otherwise
+        
+    Raises:
+        ValueError: If message format is invalid
+    """
+    if not isinstance(msg, dict):
+        raise ValueError(f"Message must be dict, got {type(msg)}")
+    
+    if "content" not in msg or "role" not in msg:
+        raise ValueError("Message must have 'content' and 'role' fields")
+    
+    # Validate role field
+    if msg["role"] not in ["user", "assistant", "system"]:
+        return True  # Invalid role = potential injection
+    
+    # Check both content and role fields
+    fields_to_check = {
+        "content": msg["content"],
+        "role": msg["role"]
+    }
+    
+    for field_name, field_value in fields_to_check.items():
+        if not isinstance(field_value, str):
+            raise ValueError(f"Message[{field_name}] must be str, got {type(field_value)}")
+        
+        normalized = normalize_for_safety_check(field_value)
+        
+        # Check for each special tag
+        SPECIAL_TAGS = [B_INST, E_INST, "<<SYS>>", "<</SYS>>"]
+        for tag in SPECIAL_TAGS:
+            normalized_tag = normalize_for_safety_check(tag)
+            
+            # Exact match
+            if normalized_tag in normalized:
+                return True
+    
+    return False
+
+def check_dialog_for_injection(dialog: list) -> bool:
+    """
+    Check entire dialog for prompt injection attempts.
+    
+    Args:
+        dialog: List of message dicts
+        
+    Returns:
+        True if any message contains injection, False otherwise
+    """
+    for msg in dialog:
+        if check_for_prompt_injection(msg):
+            return True
+    return False
 
 
 class Llama:
@@ -318,9 +408,9 @@ class Llama:
         prompt_tokens = []
         unsafe_requests = []
         for dialog in dialogs:
-            unsafe_requests.append(
-                any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog])
-            )
+            unsafe_requests = []
+        for dialog in dialogs:
+        unsafe_requests.append(check_dialog_for_injection(dialog))
             if dialog[0]["role"] == "system":
                 dialog = [
                     {
