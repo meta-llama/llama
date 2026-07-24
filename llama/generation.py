@@ -95,7 +95,10 @@ class Llama:
         torch.manual_seed(seed)
 
         if local_rank > 0:
-            sys.stdout = open(os.devnull, "w")
+            # Redirect stdout without leaking a file descriptor.
+            devnull_fd = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull_fd, sys.stdout.fileno())
+            os.close(devnull_fd)
 
         start_time = time.time()
         checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
@@ -158,6 +161,8 @@ class Llama:
         params = self.model.params
         bsz = len(prompt_tokens)
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
+        if bsz == 0:
+            return [], [] if logprobs else None
 
         min_prompt_len = min(len(t) for t in prompt_tokens)
         max_prompt_len = max(len(t) for t in prompt_tokens)
@@ -176,12 +181,13 @@ class Llama:
         input_text_mask = tokens != pad_id
         if min_prompt_len == total_len:
             logits = self.model.forward(tokens, prev_pos)
-            token_logprobs = -F.cross_entropy(
-                input=logits.transpose(1, 2),
-                target=tokens,
-                reduction="none",
-                ignore_index=pad_id,
-            )
+            if logprobs:
+                token_logprobs = -F.cross_entropy(
+                    input=logits.transpose(1, 2),
+                    target=tokens,
+                    reduction="none",
+                    ignore_index=pad_id,
+                )
 
         for cur_pos in range(min_prompt_len, total_len):
             logits = self.model.forward(tokens[:, prev_pos:cur_pos], prev_pos)
@@ -208,7 +214,7 @@ class Llama:
                 next_token == self.tokenizer.eos_id
             )
             prev_pos = cur_pos
-            if all(eos_reached):
+            if torch.all(eos_reached):
                 break
 
         if logprobs:
@@ -259,6 +265,8 @@ class Llama:
             If logprobs is True, token log probabilities are computed for each generated token.
 
         """
+        if not prompts:
+            return []
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
         prompt_tokens = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
@@ -306,6 +314,7 @@ class Llama:
         Raises:
             AssertionError: If the last message in a dialog is not from the user.
             AssertionError: If the dialog roles are not in the required 'user', 'assistant', and optional 'system' order.
+            ValueError: If the batch contains an empty dialog, or a system message with no following user message.
 
         Note:
             This method generates assistant responses for the provided conversational dialogs.
@@ -313,6 +322,10 @@ class Llama:
             If logprobs is True, token log probabilities are computed for each generated token.
 
         """
+        if not dialogs:
+            return []
+        if any(len(dialog) == 0 for dialog in dialogs):
+            raise ValueError("dialogs must not contain empty dialogs")
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
         prompt_tokens = []
@@ -322,6 +335,10 @@ class Llama:
                 any([tag in msg["content"] for tag in SPECIAL_TAGS for msg in dialog])
             )
             if dialog[0]["role"] == "system":
+                if len(dialog) < 2:
+                    raise ValueError(
+                        "A system message must be followed by a user message"
+                    )
                 dialog = [
                     {
                         "role": dialog[1]["role"],
@@ -415,7 +432,23 @@ def sample_top_p(probs, p):
     probs_sum = torch.cumsum(probs_sort, dim=-1)
     mask = probs_sum - probs_sort > p
     probs_sort[mask] = 0.0
-    probs_sort.div_(probs_sort.sum(dim=-1, keepdim=True))
+    # Guard against all-zero / NaN distributions (e.g. degenerate logits).
+    # Keep the highest-probability token so multinomial always has mass.
+    sums = probs_sort.sum(dim=-1, keepdim=True)
+    degenerate = (~torch.isfinite(sums)) | (sums <= 0)
+    if degenerate.any():
+        probs_sort = torch.where(
+            degenerate,
+            torch.zeros_like(probs_sort),
+            probs_sort,
+        )
+        probs_sort[:, 0] = torch.where(
+            degenerate.squeeze(-1),
+            torch.ones_like(probs_sort[:, 0]),
+            probs_sort[:, 0],
+        )
+        sums = probs_sort.sum(dim=-1, keepdim=True)
+    probs_sort.div_(sums)
     next_token = torch.multinomial(probs_sort, num_samples=1)
     next_token = torch.gather(probs_idx, -1, next_token)
     return next_token
