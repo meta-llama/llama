@@ -3,7 +3,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # This software may be used and distributed according to the terms of the Llama 2 Community License Agreement.
 
-set -e
+set -euo pipefail
 
 read -p "Enter the URL from email: " PRESIGNED_URL
 echo ""
@@ -15,6 +15,31 @@ if [[ $MODEL_SIZE == "" ]]; then
     MODEL_SIZE="7B,13B,70B,7B-chat,13B-chat,70B-chat"
 fi
 
+verify_checksums() {
+    # Verify an md5sum-format checklist. Prefer md5sum -c; on macOS fall back to
+    # parsing the checklist with md5 -q (md5 checklist.chk only hashes the checklist file).
+    local checklist="$1"
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum -c "${checklist}"
+        return
+    fi
+    if command -v md5 >/dev/null 2>&1; then
+        local expected actual file
+        while read -r expected file; do
+            [[ -z "${expected}" || -z "${file}" ]] && continue
+            actual=$(md5 -q "${file}")
+            if [[ "${actual}" != "${expected}" ]]; then
+                echo "Checksum mismatch for ${file}: expected ${expected}, got ${actual}" >&2
+                return 1
+            fi
+            echo "${file}: OK"
+        done < "${checklist}"
+        return
+    fi
+    echo "Neither md5sum nor md5 found; cannot verify checksums" >&2
+    return 1
+}
+
 echo "Downloading LICENSE and Acceptable Usage Policy"
 wget --continue ${PRESIGNED_URL/'*'/"LICENSE"} -O ${TARGET_FOLDER}"/LICENSE"
 wget --continue ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_POLICY.md"
@@ -22,12 +47,7 @@ wget --continue ${PRESIGNED_URL/'*'/"USE_POLICY.md"} -O ${TARGET_FOLDER}"/USE_PO
 echo "Downloading tokenizer"
 wget --continue ${PRESIGNED_URL/'*'/"tokenizer.model"} -O ${TARGET_FOLDER}"/tokenizer.model"
 wget --continue ${PRESIGNED_URL/'*'/"tokenizer_checklist.chk"} -O ${TARGET_FOLDER}"/tokenizer_checklist.chk"
-CPU_ARCH=$(uname -m)
-  if [ "$CPU_ARCH" = "arm64" ]; then
-    (cd ${TARGET_FOLDER} && md5 tokenizer_checklist.chk)
-  else
-    (cd ${TARGET_FOLDER} && md5sum -c tokenizer_checklist.chk)
-  fi
+(cd ${TARGET_FOLDER} && verify_checksums tokenizer_checklist.chk)
 
 for m in ${MODEL_SIZE//,/ }
 do
@@ -49,6 +69,9 @@ do
     elif [[ $m == "70B-chat" ]]; then
         SHARD=7
         MODEL_PATH="llama-2-70b-chat"
+    else
+        echo "Unknown model '${m}'. Valid options: 7B,13B,70B,7B-chat,13B-chat,70B-chat" >&2
+        exit 1
     fi
 
     echo "Downloading ${MODEL_PATH}"
@@ -62,10 +85,5 @@ do
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
     echo "Checking checksums"
-    CPU_ARCH=$(uname -m)
-    if [[ "$CPU_ARCH" == "arm64" ]]; then
-      (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5 checklist.chk)
-    else
-      (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
-    fi
+    (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && verify_checksums checklist.chk)
 done
