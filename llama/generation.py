@@ -157,6 +157,8 @@ class Llama:
         """
         params = self.model.params
         bsz = len(prompt_tokens)
+        if bsz == 0:
+            return ([], [] if logprobs else None)
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
 
         min_prompt_len = min(len(t) for t in prompt_tokens)
